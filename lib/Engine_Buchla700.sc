@@ -75,127 +75,259 @@ Engine_Buchla700 : CroneEngine {
 		// ---- SynthDefs ----
 
 		// -- Voice SynthDef with all 12 FM topologies --
-		SynthDef(\b700voice, { arg out, freq=440, vel=0.8, gate=1,
-			config=0,
+		// Use SinOsc directly for FM — avoids Select.ar rate issues
+		// Config selects topology at note-on time (not modulatable per-sample)
+		// This is faithful to the original Buchla 700 which set config per-voice
+
+		SynthDef(\b700v00, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
 			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
-			masterIdx=1.0,
 			cutoff=2000, resonance=0.3, drive=0.0,
-			wsaBuf, wsbBuf,
-			pan=0;
-
-			var f1, f2, f3, f4;
-			var p1, p2, p3, p4;
-			var s0, s1, s2, s3;
-			var idx, wsaIn, wsbIn;
-			var wsaOut, wsbOut, mixed, filtered, sig;
-			var env, dynEnv;
-
-			// oscillator frequencies
-			f1 = freq;
-			f2 = freq * ratio2;
-			f3 = freq * ratio3;
-			f4 = freq * ratio4;
-
-			// phase accumulators (Phasor for continuous phase)
-			p1 = Phasor.ar(0, f1 * SampleDur.ir * 2pi, 0, 2pi);
-			p2 = Phasor.ar(0, f2 * SampleDur.ir * 2pi, 0, 2pi);
-			p3 = Phasor.ar(0, f3 * SampleDur.ir * 2pi, 0, 2pi);
-			p4 = Phasor.ar(0, f4 * SampleDur.ir * 2pi, 0, 2pi);
-
-			// base oscillator signals
-			s0 = sin(p1);
-			s1 = sin(p2);
-			s2 = sin(p3);
-			s3 = sin(p4);
-
-			// scale indices by master
-			idx = [idx1, idx2, idx3, idx4, idx5, idx6] * masterIdx;
-
-			// FM routing: Select topology
-			// Each config produces [wsaIn, wsbIn]
-			// We implement all 12 and crossfade-select
-			// K2A converts control-rate config to audio rate for Select.ar
-
-			wsaIn = Select.ar(K2A.ar(config), [
-				// config 00: symmetric dual-path
-				(sin(p1 + (s1 * idx[0])) + (s3 * idx[1])) * idx[2],
-				// config 01: split modulators
-				(sin(p1 + (s1 * idx[0])) + (s1 * idx[1])) * idx[2],
-				// config 02: cascaded FM with feedback
-				sin(p1 + (sin(p2 + (s2 * idx[1])) * idx[0])) * idx[2],
-				// config 03: shared carrier
-				(s3 + (sin(p1 + (s2 * idx[1])) * idx[0])) * idx[2],
-				// config 04: minimal FM + direct envelope
-				sin(p1 + (sin(p2) * idx[1])) * idx[2],
-				// config 05: cross-coupled
-				(sin(p2) + (sin(p1 + (s3 * idx[1])) * idx[0])) * idx[2],
-				// config 06: three-osc cascade
-				sin(p1 + (sin(p2 + (s2 * idx[0])) * idx[1]) + (s3 * idx[3])) * idx[2],
-				// config 07: osc4-centric
-				sin(p1 + (s3 * idx[3])) * idx[2],
-				// config 08: dual-path with feedback
-				(sin(p1 + (sin(p2) * idx[1])) + (s2 * idx[0])) * idx[2],
-				// config 09: circular feedback (chaos)
-				sin(p1 + (s3 * idx[0])) * idx[2],
-				// config 10: shared modulator
-				(sin(p1 + (s1 * idx[1])) + (s2 * idx[0])) * idx[2],
-				// config 11: multi-output
-				(sin(p1 + (sin(p3) * idx[4])) + (s0 * idx[0]) + (s3 * idx[3])) * idx[2]
-			]);
-
-			wsbIn = Select.ar(K2A.ar(config), [
-				// config 00
-				(sin(p3 + (s1 * idx[3])) + (s3 * idx[4])) * idx[5],
-				// config 01
-				(sin(p3 + (s3 * idx[3])) + (s3 * idx[4])) * idx[5],
-				// config 02
-				sin(p3 + (s3 * idx[3])) * idx[5],
-				// config 03
-				(s3 + (sin(p2 + (s2 * idx[4])) * idx[3])) * idx[5],
-				// config 04: direct envelope
-				idx[5],
-				// config 05
-				(s3 + (sin(p3 + (sin(p2) * idx[4])) * idx[3])) * idx[5],
-				// config 06: same signal both paths
-				sin(p1 + (sin(p2 + (s2 * idx[0])) * idx[1]) + (s3 * idx[3])) * idx[5],
-				// config 07: osc4 self-mod
-				(s3 + (s3 * idx[4])) * idx[5],
-				// config 08
-				(s3 + (s0 * idx[4])) * idx[5],
-				// config 09: circular feedback
-				sin(p3 + (s1 * idx[3])) * idx[5],
-				// config 10
-				(sin(p3 + (s1 * idx[4])) + (s0 * idx[3])) * idx[5],
-				// config 11
-				(sin(p1 + (sin(p3) * idx[4])) + (s1 * idx[1])) * idx[5]
-			]);
-
-			// waveshaper lookup
-			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1, 1));
-			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1, 1));
-
-			// mix waveshapers
-			mixed = (wsaOut + wsbOut) * 0.2;
-
-			// pre-filter drive (tanh saturation, Buchla OTA character)
-			mixed = (mixed * (1 + (drive * 4))).tanh;
-
-			// OTA ladder filter (MoogFF approximation)
-			filtered = MoogFF.ar(mixed, cutoff.clip(20, 18000), resonance.clip(0, 3.5));
-
-			// DC blocker
+			wsaBuf, wsbBuf, pan=0;
+			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
+			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// config 00: symmetric dual-path
+			wsaIn = (SinOsc.ar(freq, s1*idx1) + (s3*idx2)) * idx3;
+			wsbIn = (SinOsc.ar(freq*ratio3, s1*idx4) + (s3*idx5)) * idx6;
+			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
+			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
+			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
 			filtered = LeakDC.ar(filtered);
+			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
+			sig = Pan2.ar(filtered * env * vel, pan);
+			Out.ar(out, sig);
+		}).add;
 
-			// envelope
-			env = EnvGen.kr(Env.adsr(0.005, 0.2, 0.8, 0.3), gate, doneAction: Done.freeSelf);
-			dynEnv = env * vel;
+		SynthDef(\b700v01, { arg out, freq=440, vel=0.8, gate=1,
+			ratio2=2.0, ratio3=3.0, ratio4=4.0,
+			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			cutoff=2000, resonance=0.3, drive=0.0,
+			wsaBuf, wsbBuf, pan=0;
+			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
+			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// config 01: split modulators
+			wsaIn = (SinOsc.ar(freq, s1*idx1) + (s1*idx2)) * idx3;
+			wsbIn = (SinOsc.ar(freq*ratio3, s3*idx4) + (s3*idx5)) * idx6;
+			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
+			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
+			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
+			filtered = LeakDC.ar(filtered);
+			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
+			sig = Pan2.ar(filtered * env * vel, pan);
+			Out.ar(out, sig);
+		}).add;
 
-			// anti-click ramp
-			sig = filtered * dynEnv;
+		SynthDef(\b700v02, { arg out, freq=440, vel=0.8, gate=1,
+			ratio2=2.0, ratio3=3.0, ratio4=4.0,
+			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			cutoff=2000, resonance=0.3, drive=0.0,
+			wsaBuf, wsbBuf, pan=0;
+			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
+			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// config 02: cascaded FM with feedback
+			wsaIn = SinOsc.ar(freq, SinOsc.ar(freq*ratio2, s2*idx2)*idx1) * idx3;
+			wsbIn = SinOsc.ar(freq*ratio3, s3*idx4) * idx6;
+			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
+			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
+			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
+			filtered = LeakDC.ar(filtered);
+			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
+			sig = Pan2.ar(filtered * env * vel, pan);
+			Out.ar(out, sig);
+		}).add;
 
-			// pan and output
-			sig = Pan2.ar(sig, pan);
+		SynthDef(\b700v03, { arg out, freq=440, vel=0.8, gate=1,
+			ratio2=2.0, ratio3=3.0, ratio4=4.0,
+			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			cutoff=2000, resonance=0.3, drive=0.0,
+			wsaBuf, wsbBuf, pan=0;
+			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
+			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// config 03: shared carrier
+			wsaIn = (s3 + (SinOsc.ar(freq, s2*idx2)*idx1)) * idx3;
+			wsbIn = (s3 + (SinOsc.ar(freq*ratio2, s2*idx5)*idx4)) * idx6;
+			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
+			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
+			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
+			filtered = LeakDC.ar(filtered);
+			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
+			sig = Pan2.ar(filtered * env * vel, pan);
+			Out.ar(out, sig);
+		}).add;
+
+		SynthDef(\b700v04, { arg out, freq=440, vel=0.8, gate=1,
+			ratio2=2.0, ratio3=3.0, ratio4=4.0,
+			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			cutoff=2000, resonance=0.3, drive=0.0,
+			wsaBuf, wsbBuf, pan=0;
+			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
+			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// config 04: minimal FM + direct envelope
+			wsaIn = SinOsc.ar(freq, SinOsc.ar(freq*ratio2)*idx2) * idx3;
+			wsbIn = DC.ar(idx6);
+			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
+			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
+			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
+			filtered = LeakDC.ar(filtered);
+			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
+			sig = Pan2.ar(filtered * env * vel, pan);
+			Out.ar(out, sig);
+		}).add;
+
+		SynthDef(\b700v05, { arg out, freq=440, vel=0.8, gate=1,
+			ratio2=2.0, ratio3=3.0, ratio4=4.0,
+			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			cutoff=2000, resonance=0.3, drive=0.0,
+			wsaBuf, wsbBuf, pan=0;
+			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
+			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// config 05: cross-coupled
+			wsaIn = (s1 + (SinOsc.ar(freq, s3*idx2)*idx1)) * idx3;
+			wsbIn = (s3 + (SinOsc.ar(freq*ratio3, s1*idx5)*idx4)) * idx6;
+			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
+			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
+			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
+			filtered = LeakDC.ar(filtered);
+			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
+			sig = Pan2.ar(filtered * env * vel, pan);
+			Out.ar(out, sig);
+		}).add;
+
+		SynthDef(\b700v06, { arg out, freq=440, vel=0.8, gate=1,
+			ratio2=2.0, ratio3=3.0, ratio4=4.0,
+			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			cutoff=2000, resonance=0.3, drive=0.0,
+			wsaBuf, wsbBuf, pan=0;
+			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
+			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// config 06: three-osc cascade
+			wsaIn = SinOsc.ar(freq, (SinOsc.ar(freq*ratio2, s2*idx1)*idx2) + (s3*idx4)) * idx3;
+			wsbIn = wsaIn * (idx6/idx3.max(0.001));
+			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
+			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
+			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
+			filtered = LeakDC.ar(filtered);
+			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
+			sig = Pan2.ar(filtered * env * vel, pan);
+			Out.ar(out, sig);
+		}).add;
+
+		SynthDef(\b700v07, { arg out, freq=440, vel=0.8, gate=1,
+			ratio2=2.0, ratio3=3.0, ratio4=4.0,
+			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			cutoff=2000, resonance=0.3, drive=0.0,
+			wsaBuf, wsbBuf, pan=0;
+			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
+			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// config 07: osc4-centric
+			wsaIn = SinOsc.ar(freq, s3*idx4) * idx3;
+			wsbIn = (s3 + (s3*idx5)) * idx6;
+			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
+			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
+			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
+			filtered = LeakDC.ar(filtered);
+			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
+			sig = Pan2.ar(filtered * env * vel, pan);
+			Out.ar(out, sig);
+		}).add;
+
+		SynthDef(\b700v08, { arg out, freq=440, vel=0.8, gate=1,
+			ratio2=2.0, ratio3=3.0, ratio4=4.0,
+			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			cutoff=2000, resonance=0.3, drive=0.0,
+			wsaBuf, wsbBuf, pan=0;
+			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
+			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// config 08: dual-path with feedback
+			wsaIn = (SinOsc.ar(freq, SinOsc.ar(freq*ratio2)*idx2) + (s2*idx1)) * idx3;
+			wsbIn = (s3 + (s0*idx5)) * idx6;
+			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
+			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
+			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
+			filtered = LeakDC.ar(filtered);
+			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
+			sig = Pan2.ar(filtered * env * vel, pan);
+			Out.ar(out, sig);
+		}).add;
+
+		SynthDef(\b700v09, { arg out, freq=440, vel=0.8, gate=1,
+			ratio2=2.0, ratio3=3.0, ratio4=4.0,
+			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			cutoff=2000, resonance=0.3, drive=0.0,
+			wsaBuf, wsbBuf, pan=0;
+			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
+			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// config 09: circular feedback (chaos)
+			wsaIn = SinOsc.ar(freq, s3*idx1) * idx3;
+			wsbIn = SinOsc.ar(freq*ratio3, s1*idx4) * idx6;
+			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
+			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
+			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
+			filtered = LeakDC.ar(filtered);
+			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
+			sig = Pan2.ar(filtered * env * vel, pan);
+			Out.ar(out, sig);
+		}).add;
+
+		SynthDef(\b700v10, { arg out, freq=440, vel=0.8, gate=1,
+			ratio2=2.0, ratio3=3.0, ratio4=4.0,
+			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			cutoff=2000, resonance=0.3, drive=0.0,
+			wsaBuf, wsbBuf, pan=0;
+			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
+			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// config 10: shared modulator
+			wsaIn = (SinOsc.ar(freq, s1*idx2) + (s2*idx1)) * idx3;
+			wsbIn = (SinOsc.ar(freq*ratio3, s1*idx5) + (s0*idx4)) * idx6;
+			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
+			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
+			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
+			filtered = LeakDC.ar(filtered);
+			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
+			sig = Pan2.ar(filtered * env * vel, pan);
+			Out.ar(out, sig);
+		}).add;
+
+		SynthDef(\b700v11, { arg out, freq=440, vel=0.8, gate=1,
+			ratio2=2.0, ratio3=3.0, ratio4=4.0,
+			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			cutoff=2000, resonance=0.3, drive=0.0,
+			wsaBuf, wsbBuf, pan=0;
+			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
+			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// config 11: multi-output
+			wsaIn = (SinOsc.ar(freq, SinOsc.ar(freq*ratio3)*idx5) + (s0*idx1) + (s3*idx4)) * idx3;
+			wsbIn = (SinOsc.ar(freq, SinOsc.ar(freq*ratio3)*idx5) + (s1*idx2)) * idx6;
+			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
+			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
+			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
+			filtered = LeakDC.ar(filtered);
+			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
+			sig = Pan2.ar(filtered * env * vel, pan);
 			Out.ar(out, sig);
 		}).add;
 
@@ -289,6 +421,7 @@ Engine_Buchla700 : CroneEngine {
 			var note = msg[1].asInteger;
 			var vel = msg[2].asFloat;
 			var freq = note.midicps;
+			var synthName;
 
 			// kill existing voice on same note
 			if (voices[note].notNil) {
@@ -296,12 +429,17 @@ Engine_Buchla700 : CroneEngine {
 				voices[note] = nil;
 			};
 
-			voices[note] = Synth(\b700voice, [
+			// select SynthDef by config (b700v00 through b700v11)
+			synthName = [\b700v00, \b700v01, \b700v02, \b700v03,
+				\b700v04, \b700v05, \b700v06, \b700v07,
+				\b700v08, \b700v09, \b700v10, \b700v11
+			][params[\config].asInteger.clip(0,11)];
+
+			voices[note] = Synth(synthName, [
 				\out, fxBus,
 				\freq, freq,
 				\vel, vel,
 				\gate, 1,
-				\config, params[\config],
 				\ratio2, params[\ratio2],
 				\ratio3, params[\ratio3],
 				\ratio4, params[\ratio4],
@@ -311,7 +449,6 @@ Engine_Buchla700 : CroneEngine {
 				\idx4, params[\index4] * params[\masterIndex],
 				\idx5, params[\index5] * params[\masterIndex],
 				\idx6, params[\index6] * params[\masterIndex],
-				\masterIdx, params[\masterIndex],
 				\cutoff, params[\cutoff],
 				\resonance, params[\resonance],
 				\drive, params[\drive],
@@ -330,7 +467,8 @@ Engine_Buchla700 : CroneEngine {
 
 		this.addCommand("config", "i", { arg msg;
 			params[\config] = msg[1].asInteger.clip(0, 11);
-			voices.do({ arg s; s.set(\config, params[\config]) });
+			// topology is set per-note (different SynthDef per config)
+			// existing voices keep their topology until note-off
 		});
 
 		this.addCommand("ratio2", "f", { arg msg;
