@@ -368,13 +368,13 @@ function octopus.start(soul_name, root)
   octopus.melody_last_note = root or 48
   octopus.melody_memory = {}
 
-  -- init all tentacles
+  -- init all tentacles — start hot, already breathing
   for i = 1, NUM_TENTACLES do
     octopus.tentacles[i] = init_tentacle(i)
-    -- stagger initial breath phases so they don't all sync up
-    local phases = {"build", "play", "silence", "build", "play", "fade", "build", "silence"}
+    -- stagger phases but start with high energy so it's immediately alive
+    local phases = {"play", "play", "build", "play", "play", "play", "play", "build"}
     octopus.tentacles[i].breath_phase = phases[i]
-    octopus.tentacles[i].energy = math.random() * 0.3
+    octopus.tentacles[i].energy = 0.5 + math.random() * 0.4
   end
 
   -- form
@@ -453,33 +453,32 @@ local function breathe_tentacle(t, soul, idx)
   local act = soul.activity[idx] or 1.0
 
   if t.breath_phase == "play" then
-    t.energy = math.min(1.0, t.energy + 0.02 * act)
-    -- higher activity = longer play
-    local fade_prob = 0.05 / math.max(act, 0.3)
-    if t.breath_timer > math.floor(8 * act) and math.random() < fade_prob then
+    t.energy = math.min(1.0, t.energy + 0.04 * act)
+    -- higher activity = longer play, but always eventually fade
+    local fade_prob = 0.03 / math.max(act, 0.3)
+    if t.breath_timer > math.floor(12 * act) and math.random() < fade_prob then
       t.breath_phase = "fade"
       t.breath_timer = 0
     end
 
   elseif t.breath_phase == "fade" then
-    t.energy = math.max(0.0, t.energy - 0.07)
-    if t.energy <= 0.03 then
-      t.breath_phase = "silence"
+    t.energy = math.max(0.15, t.energy - 0.05)  -- never fully dies
+    if t.energy <= 0.2 then
+      t.breath_phase = "build"  -- skip silence, go straight to build
       t.breath_timer = 0
     end
 
   elseif t.breath_phase == "silence" then
-    t.energy = 0
-    -- low activity tentacles rest longer
-    local rest_dur = math.random(3, math.floor(12 / math.max(act, 0.3)))
+    t.energy = 0.1  -- even silence has a pulse
+    local rest_dur = math.random(2, math.floor(6 / math.max(act, 0.3)))
     if t.breath_timer > rest_dur then
       t.breath_phase = "build"
       t.breath_timer = 0
     end
 
   elseif t.breath_phase == "build" then
-    t.energy = math.min(0.8, t.energy + 0.04 * act)
-    if t.energy >= 0.5 * act then
+    t.energy = math.min(0.9, t.energy + 0.06 * act)
+    if t.energy >= 0.4 then
       t.breath_phase = "play"
       t.breath_timer = 0
     end
@@ -514,54 +513,42 @@ function octopus.tick()
   end
 
   -- each tentacle acts at its own interval, gated by energy
+  -- low gate threshold = more active
   local function should_act(idx, interval)
     local t = octopus.tentacles[idx]
-    if t.energy < 0.1 then return false end
     if t.cooldown > 0 then
       t.cooldown = t.cooldown - 1
       return false
     end
     if octopus.step % interval ~= 0 then return false end
-    return math.random() < t.energy * t.activity
+    -- very low threshold: even tired tentacles act sometimes
+    return math.random() < (0.3 + t.energy * 0.7) * t.activity
   end
 
-  -- 1. TOPOLOGY tentacle (every 6 beats)
-  if should_act(T_TOPOLOGY, 6) then
-    octopus.act_topology(soul)
-  end
+  -- ALL tentacles fire frequently — this thing is ALIVE
+  -- 1. TOPOLOGY (every 4 beats)
+  if should_act(T_TOPOLOGY, 4) then octopus.act_topology(soul) end
 
-  -- 2. SPECTRUM tentacle (every 2 beats)
-  if should_act(T_SPECTRUM, 2) then
-    octopus.act_spectrum(soul)
-  end
+  -- 2. SPECTRUM (EVERY beat — this is the pulse)
+  if should_act(T_SPECTRUM, 1) then octopus.act_spectrum(soul) end
 
-  -- 3. FILTER tentacle (every 3 beats)
-  if should_act(T_FILTER, 3) then
-    octopus.act_filter(soul)
-  end
+  -- 3. FILTER (every 2 beats — breathing)
+  if should_act(T_FILTER, 2) then octopus.act_filter(soul) end
 
-  -- 4. RHYTHM tentacle (every 4 beats)
-  if should_act(T_RHYTHM, 4) then
-    octopus.act_rhythm(soul)
-  end
+  -- 4. RHYTHM (every 3 beats)
+  if should_act(T_RHYTHM, 3) then octopus.act_rhythm(soul) end
 
-  -- 5. MELODY tentacle (every 3 beats)
-  if should_act(T_MELODY, 3) then
-    octopus.act_melody(soul)
-  end
+  -- 5. MELODY (every 2 beats — always generating)
+  if should_act(T_MELODY, 2) then octopus.act_melody(soul) end
 
-  -- 6. SPACE tentacle (every 5 beats)
-  if should_act(T_SPACE, 5) then
-    octopus.act_space(soul)
-  end
+  -- 6. SPACE (every 3 beats)
+  if should_act(T_SPACE, 3) then octopus.act_space(soul) end
 
-  -- 7. FORM tentacle (every 1 beat — always active)
+  -- 7. FORM (every beat — conductor is always listening)
   octopus.act_form(soul)
 
-  -- 8. CHAOS tentacle (every 4 beats)
-  if should_act(T_CHAOS, 4) then
-    octopus.act_chaos(soul)
-  end
+  -- 8. CHAOS (every 3 beats)
+  if should_act(T_CHAOS, 3) then octopus.act_chaos(soul) end
 end
 
 -- --------------------------------------------------------------------------
@@ -737,14 +724,38 @@ function octopus.act_melody(soul)
     step.vel = util.clamp(step.vel + rand_delta(0.1), 0.2, 1.0)
   end
 
-  -- direct note injection: bandmate-like autonomous notes
-  if math.random() < soul.melody_inject_rate * t.energy then
+  -- direct note injection: polyphonic autonomous notes
+  -- the octopus PLAYS the instrument, not just mutates the sequencer
+  local inject_rate = soul.melody_inject_rate * (0.5 + t.energy)
+  if math.random() < inject_rate then
     local note = seq.markov_next(octopus.melody_last_note)
     octopus.melody_last_note = note
-    local vel = 0.3 + t.energy * 0.5
-    local gate = 0.1 + math.random() * 0.6
+    local vel = 0.25 + t.energy * 0.55
+    local gate = 0.08 + math.random() * 0.5
     if octopus.note_on_fn then
       octopus.note_on_fn(note, vel, gate)
+    end
+
+    -- polyphonic: sometimes play 2-3 notes at once (chords/clusters)
+    if math.random() < t.energy * 0.35 then
+      local intervals = {3, 4, 5, 7, 12, -5, -7, -12}
+      local chord_note = note + intervals[math.random(#intervals)]
+      clock.run(function()
+        clock.sleep(math.random() * 0.03) -- micro-stagger
+        if octopus.note_on_fn then
+          octopus.note_on_fn(chord_note, vel * 0.7, gate * 0.8)
+        end
+      end)
+    end
+    -- occasional third note for density
+    if math.random() < t.energy * 0.15 then
+      local third = note + ({7, 12, -12, 5, -5})[math.random(5)]
+      clock.run(function()
+        clock.sleep(math.random() * 0.05)
+        if octopus.note_on_fn then
+          octopus.note_on_fn(third, vel * 0.5, gate * 0.5)
+        end
+      end)
     end
   end
 

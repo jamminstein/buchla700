@@ -995,75 +995,102 @@ end
 function draw_octopus_page()
   local oi = octopus.get_info()
 
-  -- soul name
-  screen.level(15)
-  screen.font_size(12)
-  screen.move(4, 20)
-  screen.text(oi.soul)
-  screen.font_size(8)
+  -- center of the octopus
+  local cx, cy = 64, 30
 
-  -- form phase + progress
+  -- 8 tentacles radiating from center
+  -- each tentacle is a series of segments that curve based on energy + anim_phase
+  for i = 1, 8 do
+    local e = oi.energies[i] or 0
+    local base_angle = (i - 1) * (2 * math.pi / 8) - math.pi / 2
+
+    -- tentacle length scales with energy
+    local length = 12 + e * 20
+    local segments = 6
+
+    -- draw tentacle as connected line segments
+    screen.level(math.floor(2 + e * 12))
+    local px, py = cx, cy
+
+    for seg = 1, segments do
+      local t = seg / segments
+      -- each segment bends with a sine wave, phase-shifted per tentacle
+      local wave = math.sin(anim_phase * (2 + i * 0.3) + seg * 0.8) * e * 0.6
+      local angle = base_angle + wave * (0.5 + t * 0.5)
+
+      local seg_len = length / segments
+      local nx = px + math.cos(angle) * seg_len
+      local ny = py + math.sin(angle) * seg_len
+
+      -- thicker near base (brightness), thinner at tip
+      screen.level(math.floor((1 - t * 0.6) * (3 + e * 12)))
+      screen.move(px, py)
+      screen.line(nx, ny)
+      screen.stroke()
+
+      -- tip glow when energy is high
+      if seg == segments and e > 0.5 then
+        local glow = math.abs(math.sin(anim_phase * 3 + i))
+        screen.level(math.floor(glow * e * 8))
+        screen.circle(nx, ny, 1 + e)
+        screen.fill()
+      end
+
+      px, py = nx, ny
+    end
+  end
+
+  -- center body: pulses with overall energy
+  local total_energy = 0
+  for i = 1, 8 do total_energy = total_energy + (oi.energies[i] or 0) end
+  total_energy = total_energy / 8
+
+  local body_pulse = 3 + math.sin(anim_phase * 2) * total_energy * 2
+  screen.level(math.floor(4 + total_energy * 10))
+  screen.circle(cx, cy, body_pulse)
+  screen.fill()
+  screen.level(15)
+  screen.circle(cx, cy, body_pulse + 1)
+  screen.stroke()
+
+  -- soul name (top left)
+  screen.level(15)
+  screen.move(2, 7)
+  screen.text(oi.soul)
+
+  -- form phase (top right)
   screen.level(8)
-  screen.move(4, 30)
-  screen.text("FORM: " .. oi.form)
+  screen.move(96, 7)
+  screen.text(oi.form)
+
+  -- form progress bar
   screen.level(3)
-  screen.rect(50, 25, 40, 4)
+  screen.rect(96, 9, 30, 2)
   screen.stroke()
   screen.level(10)
   local progress = oi.form_length > 0 and (oi.form_beat / oi.form_length) or 0
-  screen.rect(50, 25, progress * 40, 4)
+  screen.rect(96, 9, progress * 30, 2)
   screen.fill()
 
-  -- 8 tentacle energy bars
-  local bar_w = 14
-  local bar_gap = 1
-  local bar_y = 36
-  local bar_h = 18
-  local names_short = {"T", "S", "F", "R", "M", "P", "C", "X"}
-
-  for i = 1, 8 do
-    local bx = 2 + (i-1) * (bar_w + bar_gap)
-    local e = oi.energies[i] or 0
-    local fill_h = math.floor(e * bar_h)
-
-    -- bar background
-    screen.level(1)
-    screen.rect(bx, bar_y, bar_w, bar_h)
-    screen.stroke()
-
-    -- bar fill
-    screen.level(math.floor(3 + e * 10))
-    screen.rect(bx, bar_y + bar_h - fill_h, bar_w, fill_h)
-    screen.fill()
-
-    -- label
-    screen.level(e > 0.3 and 15 or 4)
-    screen.move(bx + 5, bar_y + bar_h + 8)
-    screen.text(names_short[i])
+  -- active / bandmate
+  if octopus.active then
+    screen.level(math.floor(4 + total_energy * 8))
+    screen.move(2, 63)
+    screen.text("ALIVE")
+  else
+    screen.level(3)
+    screen.move(2, 63)
+    screen.text("SLEEP")
   end
 
-  -- bandmate voice
   local bi = bandmate.get_info()
-  screen.level(6)
-  screen.move(100, 20)
+  screen.level(5)
+  screen.move(40, 63)
   screen.text(bi.voice)
-  screen.level(math.floor(bi.energy * 10) + 2)
-  screen.rect(100, 22, bi.energy * 26, 2)
-  screen.fill()
-
-  -- active indicator
-  screen.level(octopus.active and 15 or 3)
-  screen.move(100, 12)
-  screen.text(octopus.active and "ALIVE" or "SLEEP")
-
-  -- cycle count
-  screen.level(3)
-  screen.move(100, 30)
-  screen.text("CYC " .. oi.cycle)
 
   screen.level(2)
-  screen.move(1, 63)
-  screen.text("E2:soul E3:voice K3:rnd hold:on/off")
+  screen.move(70, 63)
+  screen.text("E2:soul E3:voice hold:go")
 end
 
 -- --------------------------------------------------------------------------
