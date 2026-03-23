@@ -115,8 +115,9 @@ Engine_Buchla700 : CroneEngine {
 			// FM routing: Select topology
 			// Each config produces [wsaIn, wsbIn]
 			// We implement all 12 and crossfade-select
+			// K2A converts control-rate config to audio rate for Select.ar
 
-			wsaIn = Select.ar(config, [
+			wsaIn = Select.ar(K2A.ar(config), [
 				// config 00: symmetric dual-path
 				(sin(p1 + (s1 * idx[0])) + (s3 * idx[1])) * idx[2],
 				// config 01: split modulators
@@ -143,7 +144,7 @@ Engine_Buchla700 : CroneEngine {
 				(sin(p1 + (sin(p3) * idx[4])) + (s0 * idx[0]) + (s3 * idx[3])) * idx[2]
 			]);
 
-			wsbIn = Select.ar(config, [
+			wsbIn = Select.ar(K2A.ar(config), [
 				// config 00
 				(sin(p3 + (s1 * idx[3])) + (s3 * idx[4])) * idx[5],
 				// config 01
@@ -238,36 +239,29 @@ Engine_Buchla700 : CroneEngine {
 			lfoTri = LFTri.kr(phaserRate);
 			lfoBlend = (lfoSoft * 0.7) + (lfoTri * 0.3);
 
-			// modulated allpass frequencies: 300-3500 Hz range
-			allpassFreqs = Array.fill(8, { |i|
-				var ratio = i / 7.0;
-				var baseFreq = 300 + ((1 - (phaserIntensity * phaserIntensity)) * 3200);
-				var freqL = (baseFreq * (0.5 + (ratio * 0.5)).pow(1.5)).clip(250, 6000);
-				freqL
-			});
-
-			// cascade of 8 allpass stages per channel
+			// 8 cascaded allpass stages with fixed base frequencies
+			// modulated by LFO for phasing effect
 			apL = left;
 			apR = right;
-			8.do { |i|
-				var freq = allpassFreqs[i];
-				var modFreq = freq * (1 + (lfoBlend * phaserDepth * 0.3));
-				var delay = (1.0 / modFreq).clip(0.00001, 0.01);
-				apL = AllpassC.ar(apL, 0.01, delay, 0.0);
-				apR = AllpassC.ar(apR, 0.01, delay * 0.8, 0.0);
+			[400, 600, 900, 1300, 1800, 2400, 3100, 3900].do { |baseFreq, i|
+				var modAmt = lfoBlend * phaserDepth * 0.3 * phaserIntensity;
+				var delayL = (1.0 / (baseFreq * (1 + modAmt))).clip(0.00002, 0.01);
+				var delayR = (1.0 / (baseFreq * 0.85 * (1 + modAmt))).clip(0.00002, 0.01);
+				apL = AllpassL.ar(apL, 0.01, delayL, 0.0);
+				apR = AllpassL.ar(apR, 0.01, delayR, 0.0);
 			};
 
-			// mix: 80% shifted + 20% dry, scaled by intensity
+			// mix: shifted + dry, scaled by intensity
 			left = (apL * 0.8 * phaserIntensity) + (left * (1 - (phaserIntensity * 0.8)));
 			right = (apR * 0.8 * phaserIntensity) + (right * (1 - (phaserIntensity * 0.8)));
 
 			// ---- TILT EQ ----
 			// tilt < 0 = dark (boost low, cut high)
 			// tilt > 0 = bright (cut low, boost high)
-			tiltLo = BLowShelf.ar(left, 300, 1, tilt.neg * 6, [left, right]);
-			tiltHi = BHiShelf.ar(tiltLo, 3000, 1, tilt * 6);
-			left = tiltHi[0];
-			right = tiltHi[1];
+			left = BLowShelf.ar(left, 300, 1, tilt.neg * 6);
+			left = BHiShelf.ar(left, 3000, 1, tilt * 6);
+			right = BLowShelf.ar(right, 300, 1, tilt.neg * 6);
+			right = BHiShelf.ar(right, 3000, 1, tilt * 6);
 
 			// soft clamp
 			left = left.clip(-1, 1);
@@ -459,50 +453,30 @@ Engine_Buchla700 : CroneEngine {
 	}
 
 	fillWaveshapePresets { arg bufs;
-		var server = context.server;
+		// all use cheby() which handles wavetable format correctly
 
-		// preset 0: linear (pass-through)
-		bufs[0].sine1([1.0]);
+		// preset 0: linear (pass-through) — 1st chebyshev = identity
+		bufs[0].cheby([1.0]);
 
-		// preset 1: soft clip (gentle saturation)
+		// preset 1: soft clip — mild odd harmonics
 		bufs[1].cheby([1.0, 0.0, -0.1, 0.0, 0.02]);
 
-		// preset 2: hard clip
-		bufs[2].sendCollection(
-			Signal.fill(1024, { |i|
-				var x = (i / 512.0) - 1.0;
-				x.clip(-0.6, 0.6) / 0.6
-			}).asWavetable
-		);
+		// preset 2: hard clip — strong odd harmonics (square-ish)
+		bufs[2].cheby([1.0, 0.0, 0.33, 0.0, 0.2, 0.0, 0.14, 0.0, 0.1]);
 
-		// preset 3: wavefolder
-		bufs[3].sendCollection(
-			Signal.fill(1024, { |i|
-				var x = (i / 512.0) - 1.0;
-				(x * 2).fold(-1, 1)
-			}).asWavetable
-		);
+		// preset 3: wavefolder — alternating sign chebyshevs
+		bufs[3].cheby([0.5, 0.0, 0.8, 0.0, -0.5, 0.0, 0.3, 0.0, -0.2]);
 
-		// preset 4: sine fold (Buchla-style)
-		bufs[4].sendCollection(
-			Signal.fill(1024, { |i|
-				var x = (i / 512.0) - 1.0;
-				sin(x * 2pi)
-			}).asWavetable
-		);
+		// preset 4: sine fold (Buchla-style) — strong 3rd+5th
+		bufs[4].cheby([0.3, 0.0, 1.0, 0.0, 0.6, 0.0, 0.3]);
 
 		// preset 5: asymmetric (even harmonics)
 		bufs[5].cheby([0.8, 0.5, 0.0, 0.3, 0.0, 0.1]);
 
-		// preset 6: staircase
-		bufs[6].sendCollection(
-			Signal.fill(1024, { |i|
-				var x = (i / 512.0) - 1.0;
-				(x * 6).round / 6
-			}).asWavetable
-		);
+		// preset 6: staircase — many harmonics, quantized feel
+		bufs[6].cheby([1.0, 0.0, 0.5, 0.0, 0.33, 0.0, 0.25, 0.0, 0.2, 0.0, 0.16, 0.0, 0.14]);
 
-		// preset 7: chebyshev 3rd harmonic
+		// preset 7: chebyshev 3rd harmonic emphasis
 		bufs[7].cheby([0.0, 0.0, 1.0]);
 	}
 
