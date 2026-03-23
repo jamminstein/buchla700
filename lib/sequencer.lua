@@ -487,6 +487,82 @@ function seq.rotate(track, direction)
 end
 
 -- --------------------------------------------------------------------------
+-- pattern chaining: save/recall/chain multiple patterns
+-- --------------------------------------------------------------------------
+
+seq.patterns = {}       -- saved pattern slots (up to 8)
+seq.chain = {}          -- chain sequence (list of pattern indices)
+seq.chain_pos = 0       -- current position in chain
+seq.chain_active = false
+seq.chain_passes = 0    -- passes through current pattern before advancing
+
+function seq.save_pattern(slot)
+  slot = slot or (#seq.patterns + 1)
+  if slot > 8 then return end
+
+  -- deep copy current state
+  local p = {
+    melody = {},
+    timbre = {},
+    rhythm = {},
+    track_len = {seq.track_len[1], seq.track_len[2], seq.track_len[3]},
+  }
+  for i = 1, MAX_STEPS do
+    p.melody[i] = {}
+    for k, v in pairs(seq.melody[i]) do p.melody[i][k] = v end
+    p.timbre[i] = {}
+    for k, v in pairs(seq.timbre[i]) do p.timbre[i][k] = v end
+    p.rhythm[i] = {}
+    for k, v in pairs(seq.rhythm[i]) do p.rhythm[i][k] = v end
+  end
+  seq.patterns[slot] = p
+end
+
+function seq.load_pattern(slot)
+  local p = seq.patterns[slot]
+  if not p then return false end
+
+  for i = 1, MAX_STEPS do
+    if p.melody[i] then
+      for k, v in pairs(p.melody[i]) do seq.melody[i][k] = v end
+    end
+    if p.timbre[i] then
+      for k, v in pairs(p.timbre[i]) do seq.timbre[i][k] = v end
+    end
+    if p.rhythm[i] then
+      for k, v in pairs(p.rhythm[i]) do seq.rhythm[i][k] = v end
+    end
+  end
+  seq.track_len = {p.track_len[1], p.track_len[2], p.track_len[3]}
+  return true
+end
+
+function seq.set_chain(chain_list)
+  seq.chain = chain_list or {}
+  seq.chain_pos = 1
+  seq.chain_passes = 0
+  seq.chain_active = #seq.chain > 0
+  if seq.chain_active then
+    seq.load_pattern(seq.chain[1])
+  end
+end
+
+function seq.advance_chain()
+  if not seq.chain_active then return end
+  seq.chain_passes = seq.chain_passes + 1
+
+  -- advance after 2 passes through the pattern
+  if seq.chain_passes >= 2 then
+    seq.chain_passes = 0
+    seq.chain_pos = seq.chain_pos + 1
+    if seq.chain_pos > #seq.chain then
+      seq.chain_pos = 1
+    end
+    seq.load_pattern(seq.chain[seq.chain_pos])
+  end
+end
+
+-- --------------------------------------------------------------------------
 -- info for display
 -- --------------------------------------------------------------------------
 

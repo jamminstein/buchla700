@@ -27,9 +27,10 @@ local lattice_lib = require "lattice"
 local seq = include "lib/sequencer"
 local explorer = include "lib/explorer"
 local bandmate = include "lib/bandmate"
+local octopus = include "lib/octopus"
 
 -- pages
-local PAGES = {"TOPOLOGY", "RATIOS", "SHAPE", "FILTER", "EFFECTS"}
+local PAGES = {"TOPOLOGY", "RATIOS", "SHAPE", "FILTER", "EFFECTS", "OCTOPUS"}
 local page = 1
 
 -- topology names
@@ -275,7 +276,13 @@ function init()
   params:set_action("seq_gate", function(v) seq.gate_length = v end)
 
   -- AUTONOMOUS
-  params:add_group("AUTONOMOUS", 4)
+  params:add_group("AUTONOMOUS", 5)
+  params:add_option("octopus_soul", "octopus soul",
+    octopus.SOUL_NAMES, 3)  -- default BUCHLA
+  params:set_action("octopus_soul", function(v)
+    octopus.set_soul(octopus.SOUL_NAMES[v])
+  end)
+
   params:add_option("explorer_style", "explorer style",
     EXPLORER_STYLES, 1)
   params:set_action("explorer_style", function(v)
@@ -310,14 +317,16 @@ function init()
   -- init modules
   seq.init()
 
-  -- bandmate note callback
-  bandmate.note_on_fn = function(note, vel, gate)
+  -- autonomous note callbacks
+  local auto_note_fn = function(note, vel, gate)
     note_on(note, vel)
     clock.run(function()
       clock.sleep(gate * clock.get_beat_sec())
       note_off(note)
     end)
   end
+  bandmate.note_on_fn = auto_note_fn
+  octopus.note_on_fn = auto_note_fn
 
   -- lattice: sequencer, explorer, bandmate on separate sprockets
   my_lattice = lattice_lib:new()
@@ -348,6 +357,15 @@ function init()
   bandmate_sprocket = my_lattice:new_sprocket{
     action = function(t)
       bandmate.advance()
+      grid_dirty = true
+    end,
+    division = 1/4,
+    enabled = true
+  }
+
+  my_lattice:new_sprocket{
+    action = function(t)
+      octopus.tick()
       grid_dirty = true
     end,
     division = 1/4,
@@ -545,6 +563,15 @@ function enc(n, d)
         params:delta("exciter_amount", d)
       end
     end
+  elseif page == 6 then
+    -- OCTOPUS page
+    if n == 2 then
+      -- cycle soul
+      params:delta("octopus_soul", d)
+    elseif n == 3 then
+      -- cycle bandmate voice
+      params:delta("bandmate_voice", d)
+    end
   end
   screen_dirty = true
 end
@@ -569,12 +596,17 @@ function key(n, z)
       -- K3 release: check duration
       local held = util.time() - (k3_press_time or 0)
       if held > 0.5 then
-        -- LONG PRESS: toggle bandmate + explorer
-        if bandmate.active then
+        -- LONG PRESS: toggle octopus (the 100-handed operator)
+        if octopus.active then
+          octopus.stop()
           bandmate.stop()
           explorer.stop()
         else
-          explorer.start(EXPLORER_STYLES[params:get("explorer_style")])
+          octopus.start(
+            octopus.SOUL_NAMES[params:get("octopus_soul") or 3],
+            params:get("bandmate_root")
+          )
+          -- also start bandmate for autonomous melody
           bandmate.start(
             params:get("bandmate_root"),
             BANDMATE_VOICES[params:get("bandmate_voice")]
@@ -605,6 +637,12 @@ function key(n, z)
         elseif page == 5 then
           params:set("phaser_intensity", math.random() * 0.8)
           params:set("exciter_amount", math.random() * 0.6)
+        elseif page == 6 then
+          -- randomize soul + voice combo
+          params:set("octopus_soul", math.random(1, #octopus.SOUL_NAMES))
+          params:set("bandmate_voice", math.random(1, #BANDMATE_VOICES))
+          -- randomize sequencer
+          seq.randomize_all(params:get("bandmate_root"))
         end
       end
     end
@@ -669,6 +707,8 @@ function redraw()
     draw_filter_page()
   elseif page == 5 then
     draw_effects_page()
+  elseif page == 6 then
+    draw_octopus_page()
   end
 
   screen.update()
@@ -915,27 +955,111 @@ function draw_effects_page()
     screen.text(tilt_eq < 0 and "DARK" or "BRIT")
   end
 
-  -- autonomous info (bottom right when active)
-  if bandmate.active or explorer.active then
-    local ei = explorer.get_info()
+  -- octopus info (when active)
+  if octopus.active then
+    local oi = octopus.get_info()
+    screen.level(6)
+    screen.move(70, 42)
+    screen.text(oi.soul:sub(1,5) .. " " .. oi.form)
+    -- tentacle energy bars (8 tiny bars)
+    for i = 1, 8 do
+      local e = oi.energies[i] or 0
+      local bx = 70 + (i-1) * 7
+      local bh = math.floor(e * 10)
+      screen.level(math.floor(2 + e * 10))
+      screen.rect(bx, 56 - bh, 5, bh)
+      screen.fill()
+    end
+    screen.level(2)
+    screen.move(70, 62)
+    screen.text("T S F R M P C X")
+  elseif bandmate.active then
     local bi = bandmate.get_info()
     screen.level(4)
-    screen.move(70, 48)
-    screen.text(ei.style:sub(1,4) .. " " .. ei.phase:sub(1,3))
-    screen.level(math.floor(ei.intensity * 10) + 2)
-    screen.rect(70, 50, ei.intensity * 56, 2)
-    screen.fill()
-    screen.level(4)
-    screen.move(70, 58)
+    screen.move(70, 54)
     screen.text(bi.voice .. " " .. bi.breath)
-    screen.level(math.floor(bi.energy * 10) + 2)
-    screen.rect(70, 60, bi.energy * 56, 2)
+    screen.level(math.floor(bi.energy * 12) + 2)
+    screen.rect(70, 56, bi.energy * 56, 2)
     screen.fill()
   end
 
   screen.level(2)
   screen.move(1, 63)
   screen.text(k2_held and "E2:rate  E3:tilt" or "E2:phaser  E3:exciter  hK2:alt")
+end
+
+function draw_octopus_page()
+  local oi = octopus.get_info()
+
+  -- soul name
+  screen.level(15)
+  screen.font_size(12)
+  screen.move(4, 20)
+  screen.text(oi.soul)
+  screen.font_size(8)
+
+  -- form phase + progress
+  screen.level(8)
+  screen.move(4, 30)
+  screen.text("FORM: " .. oi.form)
+  screen.level(3)
+  screen.rect(50, 25, 40, 4)
+  screen.stroke()
+  screen.level(10)
+  local progress = oi.form_length > 0 and (oi.form_beat / oi.form_length) or 0
+  screen.rect(50, 25, progress * 40, 4)
+  screen.fill()
+
+  -- 8 tentacle energy bars
+  local bar_w = 14
+  local bar_gap = 1
+  local bar_y = 36
+  local bar_h = 18
+  local names_short = {"T", "S", "F", "R", "M", "P", "C", "X"}
+
+  for i = 1, 8 do
+    local bx = 2 + (i-1) * (bar_w + bar_gap)
+    local e = oi.energies[i] or 0
+    local fill_h = math.floor(e * bar_h)
+
+    -- bar background
+    screen.level(1)
+    screen.rect(bx, bar_y, bar_w, bar_h)
+    screen.stroke()
+
+    -- bar fill
+    screen.level(math.floor(3 + e * 10))
+    screen.rect(bx, bar_y + bar_h - fill_h, bar_w, fill_h)
+    screen.fill()
+
+    -- label
+    screen.level(e > 0.3 and 15 or 4)
+    screen.move(bx + 5, bar_y + bar_h + 8)
+    screen.text(names_short[i])
+  end
+
+  -- bandmate voice
+  local bi = bandmate.get_info()
+  screen.level(6)
+  screen.move(100, 20)
+  screen.text(bi.voice)
+  screen.level(math.floor(bi.energy * 10) + 2)
+  screen.rect(100, 22, bi.energy * 26, 2)
+  screen.fill()
+
+  -- active indicator
+  screen.level(octopus.active and 15 or 3)
+  screen.move(100, 12)
+  screen.text(octopus.active and "ALIVE" or "SLEEP")
+
+  -- cycle count
+  screen.level(3)
+  screen.move(100, 30)
+  screen.text("CYC " .. oi.cycle)
+
+  screen.level(2)
+  screen.move(1, 63)
+  screen.text("E2:soul E3:voice K3:rnd hold:on/off")
 end
 
 -- --------------------------------------------------------------------------
@@ -1154,8 +1278,13 @@ function grid_redraw()
     g:led(x, 6, is_current and 12 or 3)
   end
 
-  -- ROW 7, cols 8-11: explorer phase
-  if explorer.active then
+  -- ROW 7, cols 8-11: octopus form phase / explorer phase
+  if octopus.active then
+    local form_idx = ({DRIFT=1, BUILD=2, PEAK=3, REST=4})[octopus.form_phase] or 1
+    for i = 1, 4 do
+      g:led(i + 7, 7, i == form_idx and 12 or 3)
+    end
+  elseif explorer.active then
     for i = 1, 4 do
       g:led(i + 7, 7, i == explorer.phase and 12 or 3)
     end
@@ -1168,23 +1297,30 @@ function grid_redraw()
     g:led(x, 7, 4)
   end
 
-  -- STATUS METERS (col 15-16, rows 5-8)
-  -- col 15: explorer intensity (bottom to top)
-  if explorer.active then
-    local exp_fill = math.floor(explorer.intensity * 4 + 0.5)
-    for row = 8, 5, -1 do
-      local from_bottom = 8 - row
-      -- don't overwrite index faders in cols 1-6, these are cols 15-16
-      g:led(15, row, from_bottom < exp_fill and 8 or 0)
+  -- ROW 8, cols 8-15: octopus tentacle energies (8 bars)
+  if octopus.active then
+    for i = 1, 8 do
+      local e = octopus.get_tentacle_energy(i)
+      g:led(i + 7, 8, math.floor(e * 12) + 1)
     end
   end
 
-  -- col 16: bandmate energy (bottom to top)
+  -- STATUS METERS (col 15-16, rows 5-7)
+  if octopus.active then
+    -- col 16 rows 5-7: soul indicator (bright = active)
+    g:led(16, 5, 10)
+    g:led(16, 6, 10)
+    g:led(16, 7, 10)
+  elseif explorer.active then
+    local exp_fill = math.floor(explorer.intensity * 3 + 0.5)
+    for row = 7, 5, -1 do
+      g:led(15, row, (7 - row) < exp_fill and 8 or 0)
+    end
+  end
   if bandmate.active then
-    local bm_fill = math.floor(bandmate.energy * 4 + 0.5)
-    for row = 8, 5, -1 do
-      local from_bottom = 8 - row
-      g:led(16, row, from_bottom < bm_fill and 8 or 0)
+    local bm_fill = math.floor(bandmate.energy * 3 + 0.5)
+    for row = 7, 5, -1 do
+      g:led(16, row, (7 - row) < bm_fill and 8 or 0)
     end
   end
 
@@ -1197,6 +1333,7 @@ end
 
 function cleanup()
   if current_note then note_off(current_note) end
+  octopus.stop()
   bandmate.stop()
   explorer.stop()
   if my_lattice then my_lattice:destroy() end
