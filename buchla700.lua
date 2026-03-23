@@ -158,7 +158,7 @@ function init()
 
   for i = 1, 6 do
     params:add_control("index" .. i, "index " .. i,
-      controlspec.new(0, 2, 'lin', 0.01, ({0.5,0.3,0.2,0.1,0.1,0.1})[i], ""))
+      controlspec.new(0, 2, 'lin', 0.01, ({1.0,0.8,0.8,0.6,0.5,0.6})[i], ""))
     local idx_num = i
     params:set_action("index" .. i, function(v)
       index_values[idx_num] = v

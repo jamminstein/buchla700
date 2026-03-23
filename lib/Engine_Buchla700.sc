@@ -81,7 +81,7 @@ Engine_Buchla700 : CroneEngine {
 
 		SynthDef(\b700v00, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
-			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
 			cutoff=2000, resonance=0.3, drive=0.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
@@ -90,9 +90,9 @@ Engine_Buchla700 : CroneEngine {
 			// config 00: symmetric dual-path
 			wsaIn = (SinOsc.ar(freq, s1*idx1) + (s3*idx2)) * idx3;
 			wsbIn = (SinOsc.ar(freq*ratio3, s1*idx4) + (s3*idx5)) * idx6;
-			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
-			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
-			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			wsaOut = (wsaIn * 1.5).tanh;
+			wsbOut = (wsbIn * 1.5).tanh;
+			mixed = ((wsaOut + wsbOut) * 0.6 * (1+(drive*4))).tanh;
 			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
 			filtered = LeakDC.ar(filtered);
 			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
@@ -102,7 +102,7 @@ Engine_Buchla700 : CroneEngine {
 
 		SynthDef(\b700v01, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
-			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
 			cutoff=2000, resonance=0.3, drive=0.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
@@ -111,9 +111,9 @@ Engine_Buchla700 : CroneEngine {
 			// config 01: split modulators
 			wsaIn = (SinOsc.ar(freq, s1*idx1) + (s1*idx2)) * idx3;
 			wsbIn = (SinOsc.ar(freq*ratio3, s3*idx4) + (s3*idx5)) * idx6;
-			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
-			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
-			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			wsaOut = (wsaIn * 1.5).tanh;
+			wsbOut = (wsbIn * 1.5).tanh;
+			mixed = ((wsaOut + wsbOut) * 0.6 * (1+(drive*4))).tanh;
 			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
 			filtered = LeakDC.ar(filtered);
 			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
@@ -123,7 +123,7 @@ Engine_Buchla700 : CroneEngine {
 
 		SynthDef(\b700v02, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
-			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
 			cutoff=2000, resonance=0.3, drive=0.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
@@ -132,9 +132,9 @@ Engine_Buchla700 : CroneEngine {
 			// config 02: cascaded FM with feedback
 			wsaIn = SinOsc.ar(freq, SinOsc.ar(freq*ratio2, s2*idx2)*idx1) * idx3;
 			wsbIn = SinOsc.ar(freq*ratio3, s3*idx4) * idx6;
-			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
-			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
-			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			wsaOut = (wsaIn * 1.5).tanh;
+			wsbOut = (wsbIn * 1.5).tanh;
+			mixed = ((wsaOut + wsbOut) * 0.6 * (1+(drive*4))).tanh;
 			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
 			filtered = LeakDC.ar(filtered);
 			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
@@ -144,7 +144,7 @@ Engine_Buchla700 : CroneEngine {
 
 		SynthDef(\b700v03, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
-			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
 			cutoff=2000, resonance=0.3, drive=0.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
@@ -153,9 +153,9 @@ Engine_Buchla700 : CroneEngine {
 			// config 03: shared carrier
 			wsaIn = (s3 + (SinOsc.ar(freq, s2*idx2)*idx1)) * idx3;
 			wsbIn = (s3 + (SinOsc.ar(freq*ratio2, s2*idx5)*idx4)) * idx6;
-			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
-			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
-			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			wsaOut = (wsaIn * 1.5).tanh;
+			wsbOut = (wsbIn * 1.5).tanh;
+			mixed = ((wsaOut + wsbOut) * 0.6 * (1+(drive*4))).tanh;
 			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
 			filtered = LeakDC.ar(filtered);
 			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
@@ -165,7 +165,7 @@ Engine_Buchla700 : CroneEngine {
 
 		SynthDef(\b700v04, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
-			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
 			cutoff=2000, resonance=0.3, drive=0.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
@@ -174,9 +174,9 @@ Engine_Buchla700 : CroneEngine {
 			// config 04: minimal FM + direct envelope
 			wsaIn = SinOsc.ar(freq, SinOsc.ar(freq*ratio2)*idx2) * idx3;
 			wsbIn = DC.ar(idx6);
-			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
-			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
-			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			wsaOut = (wsaIn * 1.5).tanh;
+			wsbOut = (wsbIn * 1.5).tanh;
+			mixed = ((wsaOut + wsbOut) * 0.6 * (1+(drive*4))).tanh;
 			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
 			filtered = LeakDC.ar(filtered);
 			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
@@ -186,7 +186,7 @@ Engine_Buchla700 : CroneEngine {
 
 		SynthDef(\b700v05, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
-			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
 			cutoff=2000, resonance=0.3, drive=0.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
@@ -195,9 +195,9 @@ Engine_Buchla700 : CroneEngine {
 			// config 05: cross-coupled
 			wsaIn = (s1 + (SinOsc.ar(freq, s3*idx2)*idx1)) * idx3;
 			wsbIn = (s3 + (SinOsc.ar(freq*ratio3, s1*idx5)*idx4)) * idx6;
-			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
-			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
-			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			wsaOut = (wsaIn * 1.5).tanh;
+			wsbOut = (wsbIn * 1.5).tanh;
+			mixed = ((wsaOut + wsbOut) * 0.6 * (1+(drive*4))).tanh;
 			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
 			filtered = LeakDC.ar(filtered);
 			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
@@ -207,7 +207,7 @@ Engine_Buchla700 : CroneEngine {
 
 		SynthDef(\b700v06, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
-			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
 			cutoff=2000, resonance=0.3, drive=0.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
@@ -216,9 +216,9 @@ Engine_Buchla700 : CroneEngine {
 			// config 06: three-osc cascade
 			wsaIn = SinOsc.ar(freq, (SinOsc.ar(freq*ratio2, s2*idx1)*idx2) + (s3*idx4)) * idx3;
 			wsbIn = wsaIn * (idx6/idx3.max(0.001));
-			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
-			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
-			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			wsaOut = (wsaIn * 1.5).tanh;
+			wsbOut = (wsbIn * 1.5).tanh;
+			mixed = ((wsaOut + wsbOut) * 0.6 * (1+(drive*4))).tanh;
 			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
 			filtered = LeakDC.ar(filtered);
 			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
@@ -228,7 +228,7 @@ Engine_Buchla700 : CroneEngine {
 
 		SynthDef(\b700v07, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
-			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
 			cutoff=2000, resonance=0.3, drive=0.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
@@ -237,9 +237,9 @@ Engine_Buchla700 : CroneEngine {
 			// config 07: osc4-centric
 			wsaIn = SinOsc.ar(freq, s3*idx4) * idx3;
 			wsbIn = (s3 + (s3*idx5)) * idx6;
-			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
-			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
-			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			wsaOut = (wsaIn * 1.5).tanh;
+			wsbOut = (wsbIn * 1.5).tanh;
+			mixed = ((wsaOut + wsbOut) * 0.6 * (1+(drive*4))).tanh;
 			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
 			filtered = LeakDC.ar(filtered);
 			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
@@ -249,7 +249,7 @@ Engine_Buchla700 : CroneEngine {
 
 		SynthDef(\b700v08, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
-			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
 			cutoff=2000, resonance=0.3, drive=0.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
@@ -258,9 +258,9 @@ Engine_Buchla700 : CroneEngine {
 			// config 08: dual-path with feedback
 			wsaIn = (SinOsc.ar(freq, SinOsc.ar(freq*ratio2)*idx2) + (s2*idx1)) * idx3;
 			wsbIn = (s3 + (s0*idx5)) * idx6;
-			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
-			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
-			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			wsaOut = (wsaIn * 1.5).tanh;
+			wsbOut = (wsbIn * 1.5).tanh;
+			mixed = ((wsaOut + wsbOut) * 0.6 * (1+(drive*4))).tanh;
 			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
 			filtered = LeakDC.ar(filtered);
 			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
@@ -270,7 +270,7 @@ Engine_Buchla700 : CroneEngine {
 
 		SynthDef(\b700v09, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
-			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
 			cutoff=2000, resonance=0.3, drive=0.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
@@ -279,9 +279,9 @@ Engine_Buchla700 : CroneEngine {
 			// config 09: circular feedback (chaos)
 			wsaIn = SinOsc.ar(freq, s3*idx1) * idx3;
 			wsbIn = SinOsc.ar(freq*ratio3, s1*idx4) * idx6;
-			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
-			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
-			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			wsaOut = (wsaIn * 1.5).tanh;
+			wsbOut = (wsbIn * 1.5).tanh;
+			mixed = ((wsaOut + wsbOut) * 0.6 * (1+(drive*4))).tanh;
 			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
 			filtered = LeakDC.ar(filtered);
 			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
@@ -291,7 +291,7 @@ Engine_Buchla700 : CroneEngine {
 
 		SynthDef(\b700v10, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
-			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
 			cutoff=2000, resonance=0.3, drive=0.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
@@ -300,9 +300,9 @@ Engine_Buchla700 : CroneEngine {
 			// config 10: shared modulator
 			wsaIn = (SinOsc.ar(freq, s1*idx2) + (s2*idx1)) * idx3;
 			wsbIn = (SinOsc.ar(freq*ratio3, s1*idx5) + (s0*idx4)) * idx6;
-			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
-			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
-			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			wsaOut = (wsaIn * 1.5).tanh;
+			wsbOut = (wsbIn * 1.5).tanh;
+			mixed = ((wsaOut + wsbOut) * 0.6 * (1+(drive*4))).tanh;
 			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
 			filtered = LeakDC.ar(filtered);
 			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
@@ -312,7 +312,7 @@ Engine_Buchla700 : CroneEngine {
 
 		SynthDef(\b700v11, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
-			idx1=0.5, idx2=0.3, idx3=0.2, idx4=0.1, idx5=0.1, idx6=0.1,
+			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
 			cutoff=2000, resonance=0.3, drive=0.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env;
@@ -321,9 +321,9 @@ Engine_Buchla700 : CroneEngine {
 			// config 11: multi-output
 			wsaIn = (SinOsc.ar(freq, SinOsc.ar(freq*ratio3)*idx5) + (s0*idx1) + (s3*idx4)) * idx3;
 			wsbIn = (SinOsc.ar(freq, SinOsc.ar(freq*ratio3)*idx5) + (s1*idx2)) * idx6;
-			wsaOut = Shaper.ar(wsaBuf, wsaIn.clip(-1,1));
-			wsbOut = Shaper.ar(wsbBuf, wsbIn.clip(-1,1));
-			mixed = ((wsaOut + wsbOut) * 0.2 * (1+(drive*4))).tanh;
+			wsaOut = (wsaIn * 1.5).tanh;
+			wsbOut = (wsbIn * 1.5).tanh;
+			mixed = ((wsaOut + wsbOut) * 0.6 * (1+(drive*4))).tanh;
 			filtered = MoogFF.ar(mixed, cutoff.clip(20,18000), resonance.clip(0,3.5));
 			filtered = LeakDC.ar(filtered);
 			env = EnvGen.kr(Env.adsr(0.005,0.2,0.8,0.3), gate, doneAction:2);
