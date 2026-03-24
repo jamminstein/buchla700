@@ -227,5 +227,106 @@ return {
       range_hi = 0.7,
       description = "spectral tilt: dark (-) to bright (+)"
     },
+    delay_mix = {
+      group = "spatial",
+      weight = 0.35,
+      sensitivity = 0.4,
+      direction = "both",
+      range_lo = 0.0,
+      range_hi = 0.5,
+      description = "stereo delay send — space and echo"
+    },
+    delay_time = {
+      group = "spatial",
+      weight = 0.2,
+      sensitivity = 0.3,
+      direction = "both",
+      range_lo = 0.1,
+      range_hi = 0.6,
+      description = "delay time"
+    },
+    delay_feedback = {
+      group = "spatial",
+      weight = 0.2,
+      sensitivity = 0.3,
+      direction = "both",
+      range_lo = 0.1,
+      range_hi = 0.6,
+      description = "delay feedback — careful above 0.7"
+    },
+    reverb_mix = {
+      group = "spatial",
+      weight = 0.4,
+      sensitivity = 0.4,
+      direction = "both",
+      range_lo = 0.0,
+      range_hi = 0.5,
+      description = "reverb send — depth and room"
+    },
+    chorus_mix = {
+      group = "spatial",
+      weight = 0.25,
+      sensitivity = 0.3,
+      direction = "both",
+      range_lo = 0.0,
+      range_hi = 0.4,
+      description = "chorus thickening"
+    },
+
+    -- TIMBRAL: envelope shape
+    attack = {
+      group = "timbral",
+      weight = 0.35,
+      sensitivity = 0.4,
+      direction = "both",
+      range_lo = 0.001,
+      range_hi = 0.5,
+      description = "amp envelope attack — pluck vs pad"
+    },
+    decay = {
+      group = "timbral",
+      weight = 0.35,
+      sensitivity = 0.4,
+      direction = "both",
+      range_lo = 0.01,
+      range_hi = 1.0,
+      description = "amp envelope decay"
+    },
+    sustain_level = {
+      group = "timbral",
+      weight = 0.25,
+      sensitivity = 0.3,
+      direction = "both",
+      range_lo = 0.0,
+      range_hi = 1.0,
+      description = "sustain level"
+    },
+    release = {
+      group = "timbral",
+      weight = 0.3,
+      sensitivity = 0.4,
+      direction = "both",
+      range_lo = 0.01,
+      range_hi = 2.0,
+      description = "release — tail length"
+    },
+    noise = {
+      group = "timbral",
+      weight = 0.2,
+      sensitivity = 0.2,
+      direction = "up",
+      range_lo = 0.0,
+      range_hi = 0.1,
+      description = "noise breath — subtle texture"
+    },
+    sub_osc = {
+      group = "timbral",
+      weight = 0.25,
+      sensitivity = 0.3,
+      direction = "both",
+      range_lo = 0.0,
+      range_hi = 0.4,
+      description = "sub oscillator — weight and foundation"
+    },
   }
 }

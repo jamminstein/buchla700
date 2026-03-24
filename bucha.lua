@@ -454,7 +454,7 @@ function init()
   end)
 
   params:add_control("master_index", "master index",
-    controlspec.new(0, 1.5, 'lin', 0.01, 0.5, ""))
+    controlspec.new(0, 1.5, 'lin', 0.05, 0.5, ""))
   params:set_action("master_index", function(v)
     master_index = v
     engine.master_index(v)
