@@ -1527,8 +1527,8 @@ function octopus.act_form(soul)
     if octopus.form_phase == "REST" then
       -- pull toward anchors more strongly
       octopus.restore_anchors(0.45)
-      -- amp: breathe down
-      nudge("amp", -0.08, 0.5, 1.0)
+      -- amp: gentle breathe down (never below 0.75)
+      nudge("amp", -0.03, 0.75, 1.0)
       -- dramatic: drop delay/reverb tails
       nudge("delay_feedback", -0.15, 0.0, 0.9)
       -- silence some tentacles for contrast
@@ -1553,7 +1553,7 @@ function octopus.act_form(soul)
         octopus.tentacles[i].breath_phase = "play"
       end
       -- amp: full presence
-      nudge("amp", 0.08, 0.6, 1.0)
+      nudge("amp", 0.06, 0.8, 1.0)
       -- dramatic entry: boost intensity immediately
       nudge("delay_mix", 0.15, 0.0, 0.8)
       nudge("reverb_mix", 0.1, 0.0, 0.85)
@@ -1576,7 +1576,7 @@ function octopus.act_form(soul)
         end
       end
       -- amp: gradually rise
-      nudge("amp", 0.04, 0.55, 1.0)
+      nudge("amp", 0.04, 0.75, 1.0)
     elseif octopus.form_phase == "DRIFT" then
       -- gentle pull toward anchors
       octopus.restore_anchors(0.2)

@@ -870,7 +870,7 @@ function init()
   params:set_action("audio_in", function(v) engine.audio_in(v) end)
 
   params:add_control("amp", "master amp",
-    controlspec.new(0.3, 1.0, 'lin', 0.01, 0.85, ""))
+    controlspec.new(0.5, 1.0, 'lin', 0.01, 1.0, ""))
   params:set_action("amp", function(v) engine.amp(v) end)
 
   -- SOFTCUT TAPE LOOP
