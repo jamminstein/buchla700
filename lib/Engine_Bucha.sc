@@ -44,7 +44,7 @@ Engine_Bucha : CroneEngine {
 		params[\index5] = 0.1;
 		params[\index6] = 0.1;
 		params[\masterIndex] = 1.0;
-		params[\cutoff] = 2000.0;
+		params[\cutoff] = 6000.0;
 		params[\resonance] = 0.3;
 		params[\drive] = 0.0;
 		params[\wsaPreset] = 0;
@@ -86,7 +86,7 @@ Engine_Bucha : CroneEngine {
 		SynthDef(\b700v00, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
 			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
-			cutoff=2000, resonance=0.3, drive=0.0,
+			cutoff=6000, resonance=0.3, drive=0.0,
 			atk=0.005, dec=0.2, sus=0.8, rel=0.3,
 			noise=0.0, trem_rate=0.0, trem_depth=0.0, amp=1.0,
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
@@ -111,11 +111,11 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
+			mixed = LPF.ar(mixed, (freq * 20).clip(2000, 20000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
-			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30, 18000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
@@ -133,7 +133,7 @@ Engine_Bucha : CroneEngine {
 		SynthDef(\b700v01, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
 			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
-			cutoff=2000, resonance=0.3, drive=0.0,
+			cutoff=6000, resonance=0.3, drive=0.0,
 			atk=0.005, dec=0.2, sus=0.8, rel=0.3,
 			noise=0.0, trem_rate=0.0, trem_depth=0.0, amp=1.0,
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
@@ -158,11 +158,11 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
+			mixed = LPF.ar(mixed, (freq * 20).clip(2000, 20000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
-			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30, 18000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
@@ -180,7 +180,7 @@ Engine_Bucha : CroneEngine {
 		SynthDef(\b700v02, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
 			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
-			cutoff=2000, resonance=0.3, drive=0.0,
+			cutoff=6000, resonance=0.3, drive=0.0,
 			atk=0.005, dec=0.2, sus=0.8, rel=0.3,
 			noise=0.0, trem_rate=0.0, trem_depth=0.0, amp=1.0,
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
@@ -205,11 +205,11 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
+			mixed = LPF.ar(mixed, (freq * 20).clip(2000, 20000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
-			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30, 18000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
@@ -227,7 +227,7 @@ Engine_Bucha : CroneEngine {
 		SynthDef(\b700v03, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
 			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
-			cutoff=2000, resonance=0.3, drive=0.0,
+			cutoff=6000, resonance=0.3, drive=0.0,
 			atk=0.005, dec=0.2, sus=0.8, rel=0.3,
 			noise=0.0, trem_rate=0.0, trem_depth=0.0, amp=1.0,
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
@@ -252,11 +252,11 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
+			mixed = LPF.ar(mixed, (freq * 20).clip(2000, 20000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
-			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30, 18000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
@@ -274,7 +274,7 @@ Engine_Bucha : CroneEngine {
 		SynthDef(\b700v04, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
 			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
-			cutoff=2000, resonance=0.3, drive=0.0,
+			cutoff=6000, resonance=0.3, drive=0.0,
 			atk=0.005, dec=0.2, sus=0.8, rel=0.3,
 			noise=0.0, trem_rate=0.0, trem_depth=0.0, amp=1.0,
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
@@ -299,11 +299,11 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
+			mixed = LPF.ar(mixed, (freq * 20).clip(2000, 20000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
-			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30, 18000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
@@ -321,7 +321,7 @@ Engine_Bucha : CroneEngine {
 		SynthDef(\b700v05, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
 			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
-			cutoff=2000, resonance=0.3, drive=0.0,
+			cutoff=6000, resonance=0.3, drive=0.0,
 			atk=0.005, dec=0.2, sus=0.8, rel=0.3,
 			noise=0.0, trem_rate=0.0, trem_depth=0.0, amp=1.0,
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
@@ -346,11 +346,11 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
+			mixed = LPF.ar(mixed, (freq * 20).clip(2000, 20000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
-			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30, 18000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
@@ -368,7 +368,7 @@ Engine_Bucha : CroneEngine {
 		SynthDef(\b700v06, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
 			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
-			cutoff=2000, resonance=0.3, drive=0.0,
+			cutoff=6000, resonance=0.3, drive=0.0,
 			atk=0.005, dec=0.2, sus=0.8, rel=0.3,
 			noise=0.0, trem_rate=0.0, trem_depth=0.0, amp=1.0,
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
@@ -393,11 +393,11 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
+			mixed = LPF.ar(mixed, (freq * 20).clip(2000, 20000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
-			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30, 18000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
@@ -415,7 +415,7 @@ Engine_Bucha : CroneEngine {
 		SynthDef(\b700v07, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
 			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
-			cutoff=2000, resonance=0.3, drive=0.0,
+			cutoff=6000, resonance=0.3, drive=0.0,
 			atk=0.005, dec=0.2, sus=0.8, rel=0.3,
 			noise=0.0, trem_rate=0.0, trem_depth=0.0, amp=1.0,
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
@@ -440,11 +440,11 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
+			mixed = LPF.ar(mixed, (freq * 20).clip(2000, 20000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
-			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30, 18000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
@@ -462,7 +462,7 @@ Engine_Bucha : CroneEngine {
 		SynthDef(\b700v08, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
 			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
-			cutoff=2000, resonance=0.3, drive=0.0,
+			cutoff=6000, resonance=0.3, drive=0.0,
 			atk=0.005, dec=0.2, sus=0.8, rel=0.3,
 			noise=0.0, trem_rate=0.0, trem_depth=0.0, amp=1.0,
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
@@ -487,11 +487,11 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
+			mixed = LPF.ar(mixed, (freq * 20).clip(2000, 20000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
-			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30, 18000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
@@ -509,7 +509,7 @@ Engine_Bucha : CroneEngine {
 		SynthDef(\b700v09, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
 			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
-			cutoff=2000, resonance=0.3, drive=0.0,
+			cutoff=6000, resonance=0.3, drive=0.0,
 			atk=0.005, dec=0.2, sus=0.8, rel=0.3,
 			noise=0.0, trem_rate=0.0, trem_depth=0.0, amp=1.0,
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
@@ -534,11 +534,11 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
+			mixed = LPF.ar(mixed, (freq * 20).clip(2000, 20000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
-			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30, 18000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
@@ -556,7 +556,7 @@ Engine_Bucha : CroneEngine {
 		SynthDef(\b700v10, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
 			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
-			cutoff=2000, resonance=0.3, drive=0.0,
+			cutoff=6000, resonance=0.3, drive=0.0,
 			atk=0.005, dec=0.2, sus=0.8, rel=0.3,
 			noise=0.0, trem_rate=0.0, trem_depth=0.0, amp=1.0,
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
@@ -581,11 +581,11 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
+			mixed = LPF.ar(mixed, (freq * 20).clip(2000, 20000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
-			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30, 18000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
@@ -603,7 +603,7 @@ Engine_Bucha : CroneEngine {
 		SynthDef(\b700v11, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
 			idx1=1.0, idx2=0.8, idx3=0.8, idx4=0.6, idx5=0.5, idx6=0.6,
-			cutoff=2000, resonance=0.3, drive=0.0,
+			cutoff=6000, resonance=0.3, drive=0.0,
 			atk=0.005, dec=0.2, sus=0.8, rel=0.3,
 			noise=0.0, trem_rate=0.0, trem_depth=0.0, amp=1.0,
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
@@ -628,11 +628,11 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
+			mixed = LPF.ar(mixed, (freq * 20).clip(2000, 20000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
-			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30, 18000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
@@ -745,8 +745,7 @@ Engine_Bucha : CroneEngine {
 			right = sig[1];
 
 			// ---- HF ROLLOFF ----
-			left = LPF.ar(left, 11000);
-			right = LPF.ar(right, 11000);
+			// removed 11kHz LPF — was making everything muffled
 
 			// ---- MULTIBAND DYNAMICS (the key to taming FM) ----
 			// Split into 3 bands: low (<800), mid (800-4k), high (>4k)
@@ -812,8 +811,8 @@ Engine_Bucha : CroneEngine {
 			delL = CombC.ar(left, 1.0, delayTime.lag(0.05).clip(0.01, 1.0), delayFeedback.lag(0.03).clip(0, 0.8) * 2.5);
 			delR = CombC.ar(right, 1.0, (delayTime.lag(0.05) * 0.75).clip(0.01, 1.0), delayFeedback.lag(0.03).clip(0, 0.8) * 2.5);
 			// filter the delay returns to prevent metallic buildup
-			delL = LPF.ar(delL, 6000);
-			delR = LPF.ar(delR, 6000);
+			delL = LPF.ar(delL, 10000);
+			delR = LPF.ar(delR, 10000);
 			left = left + (delL * delayMix.lag(0.03));
 			right = right + (delR * delayMix.lag(0.03));
 

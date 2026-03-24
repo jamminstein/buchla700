@@ -577,7 +577,7 @@ function init()
   -- FILTER
   params:add_group("FILTER", 3)
   params:add_control("cutoff", "cutoff",
-    controlspec.new(20, 18000, 'exp', 0, 2000, "hz"))
+    controlspec.new(20, 18000, 'exp', 0, 6000, "hz"))
   params:set_action("cutoff", function(v)
     cutoff = v
     engine.cutoff(v)
