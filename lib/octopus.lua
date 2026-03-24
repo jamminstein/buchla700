@@ -70,7 +70,7 @@ local SOULS = {
     ratio_style = "wide",       -- big intervallic leaps in ratios
     ws_change_rate = 0.12,
     -- filter character
-    cutoff_center = 4000,
+    cutoff_center = 7000,
     cutoff_range = 8000,        -- how far it sweeps
     res_love = 0.6,
     drive_love = 0.4,
@@ -103,8 +103,8 @@ local SOULS = {
     index_ceiling = 0.7,
     ratio_style = "harmonic",
     ws_change_rate = 0.03,
-    cutoff_center = 2000,
-    cutoff_range = 3000,
+    cutoff_center = 5500,
+    cutoff_range = 5000,
     res_love = 0.3,
     drive_love = 0.05,
     density_range = {0.1, 0.4},
@@ -114,7 +114,7 @@ local SOULS = {
     melody_inject_rate = 0.05,
     phaser_love = 0.8,
     exciter_love = 0.6,
-    tilt_center = 0.2,
+    tilt_center = 0.3,
     form_dramatics = 0.5,
     silence_love = 0.5,
     chaos_freq = 0.03,
@@ -131,7 +131,7 @@ local SOULS = {
     index_ceiling = 0.9,
     ratio_style = "harmonic",
     ws_change_rate = 0.08,
-    cutoff_center = 3000,
+    cutoff_center = 6500,
     cutoff_range = 6000,
     res_love = 0.5,
     drive_love = 0.3,
@@ -142,7 +142,7 @@ local SOULS = {
     melody_inject_rate = 0.10,
     phaser_love = 0.4,
     exciter_love = 0.3,
-    tilt_center = 0.0,
+    tilt_center = 0.1,
     form_dramatics = 1.0,
     silence_love = 0.2,
     chaos_freq = 0.10,
@@ -159,7 +159,7 @@ local SOULS = {
     index_ceiling = 1.3,
     ratio_style = "angular",
     ws_change_rate = 0.20,
-    cutoff_center = 2500,
+    cutoff_center = 6000,
     cutoff_range = 10000,
     res_love = 0.7,
     drive_love = 0.6,
@@ -215,7 +215,7 @@ local SOULS = {
     index_ceiling = 1.1,
     ratio_style = "melodic",
     ws_change_rate = 0.10,
-    cutoff_center = 4500,
+    cutoff_center = 7000,
     cutoff_range = 7000,
     res_love = 0.4,
     drive_love = 0.35,
@@ -243,7 +243,7 @@ local SOULS = {
     index_ceiling = 1.0,
     ratio_style = "harmonic",
     ws_change_rate = 0.06,
-    cutoff_center = 3500,
+    cutoff_center = 6000,
     cutoff_range = 5000,
     res_love = 0.3,
     drive_love = 0.15,
@@ -271,7 +271,7 @@ local SOULS = {
     index_ceiling = 1.0,
     ratio_style = "angular",
     ws_change_rate = 0.15,
-    cutoff_center = 3000,
+    cutoff_center = 6500,
     cutoff_range = 9000,
     res_love = 0.6,
     drive_love = 0.4,
@@ -306,7 +306,7 @@ local SOULS = {
     ratio_style = "harmonic",      -- clean ratios
     ws_change_rate = 0.04,         -- stable waveshape
     -- filter: auto-wah territory
-    cutoff_center = 1500,          -- mid-low, envelope does the talking
+    cutoff_center = 4000,          -- higher center, wah sweeps around it
     cutoff_range = 6000,           -- wide for wah sweeps
     res_love = 0.5,                -- enough for wah character
     drive_love = 0.35,             -- warm saturation
@@ -903,7 +903,7 @@ function octopus.act_filter(soul)
   if soul.is_funk then
     local current = params:get("cutoff")
     -- cutoff: tight around center, the LFO does the sweep
-    local pull = (soul.cutoff_center - current) * 0.12
+    local pull = (soul.cutoff_center - current) * 0.06  -- gentler pull for FUNK too
     params:set("cutoff", util.clamp(current + pull + rand_delta(200), 40, 18000))
 
     -- LFO > filter: the auto-wah engine
@@ -931,7 +931,7 @@ function octopus.act_filter(soul)
 
   -- NON-FUNK: original behavior
   local current = params:get("cutoff")
-  local pull = (soul.cutoff_center - current) * 0.06
+  local pull = (soul.cutoff_center - current) * 0.03  -- gentle pull, don't fight the user
 
   local sweep_mult = 1.0
   if octopus.form_phase == "PEAK" then sweep_mult = 2.5
@@ -1376,47 +1376,46 @@ function octopus.act_space(soul)
   local tilt_pull = (soul.tilt_center - params:get("tilt_eq")) * 0.1
   nudge("tilt_eq", tilt_pull + rand_delta(0.08 * t.energy), -0.8, 0.8)
 
-  -- delay: the room OPENS and CLOSES
+  -- delay: the room OPENS and CLOSES (capped to stay present)
   if octopus.form_phase == "PEAK" then
-    nudge("delay_mix", math.random() * 0.12 * t.energy, 0.0, 0.8)
+    nudge("delay_mix", math.random() * 0.08 * t.energy, 0.0, 0.4)
     nudge("delay_time", rand_delta(0.08), 0.05, 1.0)
-    nudge("delay_feedback", rand_delta(0.08), 0.15, 0.85)
+    nudge("delay_feedback", rand_delta(0.06), 0.15, 0.65)
   elseif octopus.form_phase == "BUILD" then
-    nudge("delay_mix", math.random() * 0.08 * t.energy, 0.0, 0.7)
+    nudge("delay_mix", math.random() * 0.05 * t.energy, 0.0, 0.3)
     if math.random() < 0.35 then nudge("delay_time", rand_delta(0.06), 0.05, 1.0) end
-    if math.random() < 0.3 then nudge("delay_feedback", rand_delta(0.06), 0.1, 0.75) end
+    if math.random() < 0.3 then nudge("delay_feedback", rand_delta(0.04), 0.1, 0.55) end
   elseif octopus.form_phase == "REST" then
-    nudge("delay_mix", -0.06, 0.0, 1.0)
-    nudge("delay_feedback", -0.03, 0.0, 0.9)
+    nudge("delay_mix", -0.08, 0.0, 0.5)
+    nudge("delay_feedback", -0.05, 0.0, 0.7)
   elseif octopus.form_phase == "DRIFT" then
-    -- gentle delay drift
     if math.random() < 0.3 then
-      nudge("delay_mix", rand_delta(0.04), 0.0, 0.4)
+      nudge("delay_mix", rand_delta(0.03), 0.0, 0.25)
     end
   end
 
-  -- reverb: the space itself breathes
+  -- reverb: the space itself breathes (keep it tight)
   if octopus.form_phase == "PEAK" then
-    nudge("reverb_mix", math.random() * 0.10, 0.0, 0.85)
-    nudge("reverb_size", rand_delta(0.06), 0.2, 0.95)
-    nudge("reverb_damp", rand_delta(0.05), 0.1, 0.9)
+    nudge("reverb_mix", math.random() * 0.06, 0.0, 0.35)
+    nudge("reverb_size", rand_delta(0.04), 0.2, 0.75)
+    nudge("reverb_damp", rand_delta(0.03), 0.2, 0.6)
   elseif octopus.form_phase == "BUILD" then
-    nudge("reverb_mix", math.random() * 0.06, 0.0, 0.7)
-    nudge("reverb_size", rand_delta(0.04), 0.2, 0.9)
+    nudge("reverb_mix", math.random() * 0.04, 0.0, 0.3)
+    nudge("reverb_size", rand_delta(0.03), 0.2, 0.7)
   elseif octopus.form_phase == "REST" then
-    -- reverb STAYS during rest (beautiful tails) but size contracts
-    nudge("reverb_size", -0.03, 0.3, 0.95)
+    nudge("reverb_mix", -0.04, 0.0, 0.4)
+    nudge("reverb_size", -0.03, 0.3, 0.75)
   elseif octopus.form_phase == "DRIFT" then
-    nudge("reverb_mix", rand_delta(0.03), 0.0, 0.5)
+    nudge("reverb_mix", rand_delta(0.02), 0.0, 0.25)
   end
 
-  -- chorus: thickening
+  -- chorus: thickening (capped low)
   if math.random() < 0.35 then
     if octopus.form_phase == "BUILD" or octopus.form_phase == "PEAK" then
-      nudge("chorus_mix", math.random() * 0.08 * t.energy, 0.0, 0.6)
+      nudge("chorus_mix", math.random() * 0.05 * t.energy, 0.0, 0.3)
       nudge("chorus_rate", rand_delta(0.2), 0.1, 3.0)
     else
-      nudge("chorus_mix", rand_delta(0.04 * t.energy), 0.0, 0.4)
+      nudge("chorus_mix", rand_delta(0.03 * t.energy), 0.0, 0.2)
     end
   end
 
