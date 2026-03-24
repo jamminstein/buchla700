@@ -343,6 +343,9 @@ octopus.duo_phrase_notes = 0  -- notes played in current phrase
 -- note callback
 octopus.note_on_fn = nil
 
+-- phase change callback (for scale progression)
+octopus.on_phase_change = nil
+
 -- --------------------------------------------------------------------------
 -- init tentacles
 -- --------------------------------------------------------------------------
@@ -1013,6 +1016,11 @@ function octopus.act_form(soul)
     end
 
     octopus.form_phase = octopus.form_template[octopus.form_idx]
+
+    -- notify phase change listeners (scale progression etc.)
+    if octopus.on_phase_change then
+      octopus.on_phase_change(octopus.form_phase)
+    end
 
     -- phase length varies by soul dramatics — SHORTER for more drama
     local base = math.random(10, 28)  -- shorter phases = more dynamic

@@ -133,6 +133,19 @@ local tape_loop_length = 4  -- beats
 local duo_voice = "A"  -- which voice is currently speaking
 local duo_phrase_count = 0
 
+-- scale progression state
+local progression_idx = 0          -- position in current progression sequence
+local progression_phase_count = 0  -- count phase changes for speed gating
+local PROGRESSIONS = {
+  DIATONIC  = {0, 5, 7, 0},                                          -- I IV V I
+  MODAL     = {0, 3, 5, 10, 0},                                      -- I bIII IV bVII I
+  CHROMATIC = {0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5, 0},           -- cycle of fifths
+}
+
+-- chord mode state
+local chord_notes = {}     -- chord_notes[root] = {note1, note2, ...}
+local chord_mode_override = nil  -- temporary override for duo voice B (nil = use param)
+
 -- screen
 local screen_dirty = true
 local anim_phase = 0
@@ -173,6 +186,155 @@ end
 local function quantize_note(note)
   if #scale_lock_scale == 0 then return note end
   return musicutil.snap_note_to_array(note, scale_lock_scale)
+end
+
+-- --------------------------------------------------------------------------
+-- scale progression
+-- --------------------------------------------------------------------------
+
+local function advance_progression(new_phase)
+  local mode = params:get("progression_mode")
+  if mode == 1 then return end  -- OFF
+
+  -- count phase changes and gate by speed setting
+  progression_phase_count = progression_phase_count + 1
+  local speed = params:get("progression_speed")
+  local threshold = ({1, 2, 4})[speed]
+  if progression_phase_count < threshold then return end
+  progression_phase_count = 0
+
+  -- determine the semitone offset
+  local offset = 0
+  local mode_name = ({"OFF", "DIATONIC", "MODAL", "CHROMATIC", "RANDOM"})[mode]
+
+  if mode_name == "RANDOM" then
+    -- pick a random degree from the current scale
+    if #scale_lock_scale > 0 then
+      local random_note = scale_lock_scale[math.random(#scale_lock_scale)]
+      offset = random_note % 12
+    else
+      offset = math.random(0, 11)
+    end
+  else
+    local prog = PROGRESSIONS[mode_name]
+    if not prog then return end
+    progression_idx = progression_idx + 1
+    if progression_idx > #prog then progression_idx = 1 end
+    offset = prog[progression_idx]
+  end
+
+  -- update scale root (1-indexed into NOTE_NAMES)
+  local base_root = 1  -- C by default; offset from current base
+  -- we apply the offset relative to index 1 (C)
+  local new_root = ((offset) % 12) + 1
+  params:set("scale_root", new_root)  -- this triggers rebuild_scale()
+
+  -- update sequencer root
+  seq.root = 48 + offset  -- low C + progression offset
+  seq.last_note = seq.root
+
+  -- update octopus melody root
+  octopus.melody_root = 48 + offset
+  octopus.melody_last_note = 48 + offset
+end
+
+-- --------------------------------------------------------------------------
+-- chord building
+-- --------------------------------------------------------------------------
+
+local function note_in_scale(note)
+  if #scale_lock_scale == 0 then return false end
+  local pc = note % 12
+  for _, sn in ipairs(scale_lock_scale) do
+    if sn % 12 == pc then return true end
+  end
+  return false
+end
+
+local function is_major_third(root)
+  -- check if root+4 is in scale (major third); if not, use minor third
+  if #scale_lock_scale > 0 then
+    return note_in_scale(root + 4)
+  else
+    -- no scale lock: 40% major, 60% minor
+    return math.random() < 0.4
+  end
+end
+
+local function is_major_seventh(root)
+  if #scale_lock_scale > 0 then
+    return note_in_scale(root + 11)
+  else
+    return math.random() < 0.35
+  end
+end
+
+local function apply_inversion(notes, inversion)
+  if #notes < 2 then return notes end
+  local inv = inversion
+  if inv == 4 then inv = math.random(1, 3) end  -- RANDOM
+
+  if inv == 2 then
+    -- 1st inversion: move lowest note up an octave
+    notes[1] = notes[1] + 12
+    table.sort(notes)
+  elseif inv == 3 then
+    -- 2nd inversion: move two lowest notes up an octave
+    notes[1] = notes[1] + 12
+    if notes[2] then notes[2] = notes[2] + 12 end
+    table.sort(notes)
+  end
+  -- inv == 1 (ROOT): leave as-is
+  return notes
+end
+
+local function build_chord(root_note, mode, inversion)
+  if mode == 1 then return {root_note} end  -- OFF
+
+  local notes = {}
+  local third = is_major_third(root_note) and 4 or 3
+  local seventh = is_major_seventh(root_note) and 11 or 10
+
+  if mode == 2 then
+    -- TRIADS: root, 3rd, 5th
+    notes = {root_note, root_note + third, root_note + 7}
+
+  elseif mode == 3 then
+    -- 7THS: root, 3rd, 5th, 7th
+    notes = {root_note, root_note + third, root_note + 7, root_note + seventh}
+
+  elseif mode == 4 then
+    -- SUS: alternate sus2/sus4
+    if math.random() < 0.5 then
+      notes = {root_note, root_note + 5, root_note + 7}  -- sus4
+    else
+      notes = {root_note, root_note + 2, root_note + 7}  -- sus2
+    end
+
+  elseif mode == 5 then
+    -- CLUSTERS: tight voicings
+    if math.random() < 0.5 then
+      notes = {root_note, root_note + 1, root_note + 2}  -- tight cluster
+    else
+      notes = {root_note, root_note + 1, root_note + 3}  -- wider cluster
+    end
+
+  elseif mode == 6 then
+    -- OPEN: spread across octaves
+    notes = {root_note, root_note + 7, root_note + 12 + third}
+  end
+
+  -- apply scale quantization to chord tones
+  if #scale_lock_scale > 0 then
+    for i = 2, #notes do
+      notes[i] = quantize_note(notes[i])
+    end
+  end
+
+  -- apply inversion
+  notes = apply_inversion(notes, inversion)
+
+  return notes
 end
 
 -- --------------------------------------------------------------------------
@@ -528,6 +690,20 @@ function init()
   params:add_option("scale_root", "scale root", NOTE_NAMES, 1)
   params:set_action("scale_root", function(v) rebuild_scale() end)
 
+  -- SCALE PROGRESSION
+  params:add_group("SCALE PROGRESSION", 2)
+  params:add_option("progression_mode", "progression",
+    {"OFF", "DIATONIC", "MODAL", "CHROMATIC", "RANDOM"}, 1)
+  params:add_option("progression_speed", "prog speed",
+    {"EVERY PHASE", "EVERY 2", "EVERY 4"}, 1)
+
+  -- CHORD MODE
+  params:add_group("CHORD MODE", 2)
+  params:add_option("chord_mode", "chord mode",
+    {"OFF", "TRIADS", "7THS", "SUS", "CLUSTERS", "OPEN"}, 1)
+  params:add_option("chord_inversion", "inversion",
+    {"ROOT", "1ST", "2ND", "RANDOM"}, 1)
+
   -- AUDIO INPUT
   params:add_group("AUDIO INPUT", 1)
   params:add_control("audio_in", "audio in",
@@ -578,6 +754,13 @@ function init()
 
   -- autonomous note callbacks
   local auto_note_fn = function(note, vel, gate, pan_val)
+    -- duo mode Voice B: use complementary chord type
+    if params:get("duo_mode") == 2 and params:get("chord_mode") > 1 and
+       octopus.active and octopus.duo_voice == "B" then
+      -- complementary mapping: TRIADS<->SUS, 7THS<->OPEN, CLUSTERS<->TRIADS
+      local complements = {[1]=1, [2]=4, [3]=6, [4]=2, [5]=2, [6]=3}
+      chord_mode_override = complements[params:get("chord_mode")] or params:get("chord_mode")
+    end
     note_on(note, vel, pan_val)
     clock.run(function()
       clock.sleep(gate * clock.get_beat_sec())
@@ -586,6 +769,11 @@ function init()
   end
   bandmate.note_on_fn = auto_note_fn
   octopus.note_on_fn = auto_note_fn
+
+  -- scale progression: hook into octopus form phase changes
+  octopus.on_phase_change = function(new_phase)
+    advance_progression(new_phase)
+  end
 
   -- lattice: sequencer, explorer, bandmate on separate sprockets
   my_lattice = lattice_lib:new()
@@ -691,21 +879,53 @@ end
 
 function note_on(note, vel, pan_override)
   note = quantize_note(note)
-  engine.note_on(note, vel)
-  if pan_override then
-    engine.pan(note, pan_override)
+  local chord_mode = chord_mode_override or params:get("chord_mode")
+  local inversion = params:get("chord_inversion")
+  chord_mode_override = nil  -- consume the override
+
+  if chord_mode > 1 then
+    -- chord mode: build and play all chord notes
+    local notes = build_chord(note, chord_mode, inversion)
+    chord_notes[note] = notes
+
+    local ch = params:get("midi_out_ch")
+    for i, n in ipairs(notes) do
+      -- slight velocity reduction for upper voices (voice leading)
+      local v = (i == 1) and vel or vel * (0.85 - (i - 2) * 0.05)
+      v = math.max(0.2, v)
+      engine.note_on(n, v)
+      if pan_override then engine.pan(n, pan_override) end
+      midi_out_device:note_on(n, math.floor(v * 127), ch)
+    end
+  else
+    -- single note mode (original)
+    engine.note_on(note, vel)
+    if pan_override then engine.pan(note, pan_override) end
+    local ch = params:get("midi_out_ch")
+    midi_out_device:note_on(note, math.floor(vel * 127), ch)
   end
-  local ch = params:get("midi_out_ch")
-  midi_out_device:note_on(note, math.floor(vel * 127), ch)
+
   current_note = note
   screen_dirty = true
 end
 
 function note_off(note)
   note = quantize_note(note)
-  engine.note_off(note)
   local ch = params:get("midi_out_ch")
-  midi_out_device:note_off(note, 0, ch)
+
+  if chord_notes[note] then
+    -- release all chord notes
+    for _, n in ipairs(chord_notes[note]) do
+      engine.note_off(n)
+      midi_out_device:note_off(n, 0, ch)
+    end
+    chord_notes[note] = nil
+  else
+    -- single note release
+    engine.note_off(note)
+    midi_out_device:note_off(note, 0, ch)
+  end
+
   if current_note == note then current_note = nil end
   screen_dirty = true
 end
@@ -883,6 +1103,9 @@ function key(n, z)
           bandmate.stop()
           explorer.stop()
         else
+          -- reset progression state
+          progression_idx = 0
+          progression_phase_count = 0
           octopus.start(
             octopus.SOUL_NAMES[params:get("octopus_soul") or 3],
             params:get("bandmate_root")
@@ -1046,6 +1269,14 @@ function draw_topology_page()
   screen.level(12)
   screen.rect(22, 47, util.clamp(master_index / 2.0, 0, 1) * 40, 5)
   screen.fill()
+
+  -- progression root indicator
+  if params:get("progression_mode") > 1 then
+    local root_idx = params:get("scale_root")
+    screen.level(6)
+    screen.move(80, 52)
+    screen.text("ROOT " .. NOTE_NAMES[root_idx])
+  end
 
   screen.level(2)
   screen.move(1, 63)
@@ -1376,14 +1607,23 @@ function draw_octopus_page()
     screen.text("SLEEP")
   end
 
+  -- chord mode indicator
+  local cm = params:get("chord_mode")
+  if cm > 1 then
+    local chord_names = {"", "TRI", "7TH", "SUS", "CLU", "OPN"}
+    screen.level(6)
+    screen.move(36, 63)
+    screen.text(chord_names[cm])
+  end
+
   local bi = bandmate.get_info()
   screen.level(5)
-  screen.move(40, 63)
+  screen.move(54, 63)
   screen.text(bi.voice)
 
   screen.level(2)
-  screen.move(70, 63)
-  screen.text("E2:soul E3:voice hold:go")
+  screen.move(80, 63)
+  screen.text("E2:soul E3:voice")
 end
 
 -- --------------------------------------------------------------------------
@@ -1571,6 +1811,13 @@ function grid_redraw()
       g:led(x, 1, 3)   -- others dim
     end
   end
+  -- progression indicator (col 13, row 1)
+  if params:get("progression_mode") > 1 then
+    local prog_brightness = 4 + math.floor(math.abs(math.sin(anim_phase * 2)) * 8)
+    g:led(13, 1, prog_brightness)
+  else
+    g:led(13, 1, 0)
+  end
   -- bandmate toggle
   g:led(14, 1, bandmate.active and 12 or 3)
   -- explorer toggle
@@ -1622,6 +1869,11 @@ function grid_redraw()
   if grid_mode == "KEYS" then
     -- KEYBOARD MODE: rows 5-8 = isomorphic keyboard
     local root = params:get("bandmate_root")
+    -- build set of currently sounding chord notes for dim display
+    local chord_playing = {}
+    for _, cnotes in pairs(chord_notes) do
+      for _, n in ipairs(cnotes) do chord_playing[n] = true end
+    end
     for row = 5, 8 do
       local octave = 8 - row
       for col = 1, 16 do
@@ -1629,6 +1881,8 @@ function grid_redraw()
         local key = col .. "_" .. row
         if grid_keys_held[key] then
           g:led(col, row, 15)  -- held notes bright
+        elseif chord_playing[midi_note] then
+          g:led(col, row, 8)   -- chord notes medium
         elseif #scale_lock_scale > 0 then
           -- check if note is in scale
           local in_scale = false
@@ -1737,6 +1991,14 @@ end
 
 function cleanup()
   if current_note then note_off(current_note) end
+  -- release all chord notes
+  for root, notes in pairs(chord_notes) do
+    for _, n in ipairs(notes) do
+      engine.note_off(n)
+      midi_out_device:note_off(n, 0, params:get("midi_out_ch"))
+    end
+  end
+  chord_notes = {}
   -- release all grid keyboard notes
   for k, note in pairs(grid_keys_held) do
     note_off(note)
