@@ -66,7 +66,7 @@ local SOULS = {
     topo_peak   = {9, 8, 2, 5, 11},
     topo_rest   = {0, 4, 1},
     -- spectrum character
-    index_ceiling = 1.5,
+    index_ceiling = 1.1,
     ratio_style = "wide",       -- big intervallic leaps in ratios
     ws_change_rate = 0.12,
     -- filter character
@@ -128,7 +128,7 @@ local SOULS = {
     topo_build  = {0, 1, 2, 3, 5, 6},
     topo_peak   = {2, 5, 8, 9},
     topo_rest   = {0, 1, 4},
-    index_ceiling = 1.2,
+    index_ceiling = 0.9,
     ratio_style = "harmonic",
     ws_change_rate = 0.08,
     cutoff_center = 3000,
@@ -156,7 +156,7 @@ local SOULS = {
     topo_build  = {2, 5, 8, 11, 6},
     topo_peak   = {9, 8, 5, 2, 11},
     topo_rest   = {5, 6, 3},
-    index_ceiling = 2.0,
+    index_ceiling = 1.3,
     ratio_style = "angular",
     ws_change_rate = 0.20,
     cutoff_center = 2500,
@@ -212,7 +212,7 @@ local SOULS = {
     topo_build  = {2, 3, 5, 6},
     topo_peak   = {2, 8, 9, 5, 11},
     topo_rest   = {0, 1},
-    index_ceiling = 1.6,
+    index_ceiling = 1.1,
     ratio_style = "melodic",
     ws_change_rate = 0.10,
     cutoff_center = 4500,
@@ -268,7 +268,7 @@ local SOULS = {
     topo_build  = {2, 5, 6, 8},
     topo_peak   = {9, 8, 2, 11, 7},
     topo_rest   = {1, 4, 5},
-    index_ceiling = 1.4,
+    index_ceiling = 1.0,
     ratio_style = "angular",
     ws_change_rate = 0.15,
     cutoff_center = 3000,
@@ -335,6 +335,10 @@ octopus.tentacles = {}
 octopus.melody_memory = {}
 octopus.melody_last_note = 48
 octopus.melody_root = 48
+
+-- duo mode state
+octopus.duo_voice = "A"      -- current speaking voice
+octopus.duo_phrase_notes = 0  -- notes played in current phrase
 
 -- note callback
 octopus.note_on_fn = nil
@@ -827,11 +831,39 @@ function octopus.act_melody(soul)
   local inject_rate = soul.melody_inject_rate * (0.5 + t.energy)
   if math.random() < inject_rate then
     local note = seq.markov_next(octopus.melody_last_note)
-    octopus.melody_last_note = note
     local vel = 0.25 + t.energy * 0.55
     local gate = 0.08 + math.random() * 0.5
+    local pan_val = nil
+
+    -- DUO MODE: alternate between voice A and voice B
+    if params:get("duo_mode") == 2 then
+      octopus.duo_phrase_notes = octopus.duo_phrase_notes + 1
+      if octopus.duo_voice == "A" then
+        -- Voice A: current root, current topology
+        pan_val = -0.5
+        if octopus.duo_phrase_notes >= math.random(2, 4) then
+          octopus.duo_voice = "B"
+          octopus.duo_phrase_notes = 0
+        end
+      else
+        -- Voice B: root + 7 semitones (a fifth up), different topology
+        note = note + 7
+        -- clamp
+        while note > octopus.melody_root + 36 do note = note - 12 end
+        pan_val = 0.5
+        -- different topology for voice B
+        local alt_topos = soul.topo_build or {0, 1, 2}
+        params:set("config", alt_topos[math.random(#alt_topos)] + 1)
+        if octopus.duo_phrase_notes >= math.random(2, 4) then
+          octopus.duo_voice = "A"
+          octopus.duo_phrase_notes = 0
+        end
+      end
+    end
+
+    octopus.melody_last_note = note
     if octopus.note_on_fn then
-      octopus.note_on_fn(note, vel, gate)
+      octopus.note_on_fn(note, vel, gate, pan_val)
     end
 
     -- polyphonic: sometimes play 2-3 notes at once (chords/clusters)
@@ -841,7 +873,7 @@ function octopus.act_melody(soul)
       clock.run(function()
         clock.sleep(math.random() * 0.03) -- micro-stagger
         if octopus.note_on_fn then
-          octopus.note_on_fn(chord_note, vel * 0.7, gate * 0.8)
+          octopus.note_on_fn(chord_note, vel * 0.7, gate * 0.8, pan_val)
         end
       end)
     end
@@ -851,7 +883,7 @@ function octopus.act_melody(soul)
       clock.run(function()
         clock.sleep(math.random() * 0.05)
         if octopus.note_on_fn then
-          octopus.note_on_fn(third, vel * 0.5, gate * 0.5)
+          octopus.note_on_fn(third, vel * 0.5, gate * 0.5, pan_val)
         end
       end)
     end
@@ -932,6 +964,31 @@ function octopus.act_space(soul)
       nudge("chorus_mix", rand_delta(0.04 * t.energy), 0.0, 0.4)
     end
   end
+
+  -- tape loop: rec and play drift with form
+  if math.random() < 0.3 * t.energy then
+    if octopus.form_phase == "PEAK" then
+      nudge("tape_rec", math.random() * 0.12, 0.0, 1.0)
+      nudge("tape_play", math.random() * 0.12, 0.0, 1.0)
+    elseif octopus.form_phase == "BUILD" then
+      nudge("tape_rec", math.random() * 0.06, 0.0, 0.8)
+      nudge("tape_play", math.random() * 0.08, 0.0, 0.8)
+    elseif octopus.form_phase == "REST" then
+      nudge("tape_rec", -0.06, 0.0, 1.0)
+      -- keep playback alive for ghostly tails
+      nudge("tape_play", rand_delta(0.04), 0.0, 0.6)
+    else
+      nudge("tape_rec", rand_delta(0.03), 0.0, 0.5)
+      nudge("tape_play", rand_delta(0.03), 0.0, 0.5)
+    end
+  end
+
+  -- audio_in: occasional nudge during PEAK
+  if octopus.form_phase == "PEAK" and math.random() < 0.08 * t.energy then
+    nudge("audio_in", math.random() * 0.1, 0.0, 0.6)
+  elseif octopus.form_phase == "REST" then
+    nudge("audio_in", -0.03, 0.0, 1.0)
+  end
 end
 
 -- 7. FORM: the conductor
@@ -977,6 +1034,11 @@ function octopus.act_form(soul)
         local victim2 = math.random(1, 6)
         octopus.tentacles[victim2].breath_phase = "fade"
       end
+      -- tape: slow down, sometimes reverse
+      if math.random() < 0.4 then
+        local rest_rates = {0.5, 0.75, -0.5, -1.0, 0.25}
+        params:set("tape_rate", rest_rates[math.random(#rest_rates)])
+      end
     elseif octopus.form_phase == "PEAK" then
       -- EXPLODE: energize all tentacles
       for i = 1, NUM_TENTACLES do
@@ -990,6 +1052,11 @@ function octopus.act_form(soul)
       -- occasional dramatic filter sweep on PEAK entry
       if math.random() < 0.4 then
         params:set("cutoff", math.random(6000, 14000))
+      end
+      -- tape: occasional speed changes
+      if math.random() < 0.5 then
+        local peak_rates = {0.5, 0.75, 1.0, 1.5, 2.0}
+        params:set("tape_rate", peak_rates[math.random(#peak_rates)])
       end
     elseif octopus.form_phase == "BUILD" then
       -- gentle wake-up: start building
@@ -1005,6 +1072,8 @@ function octopus.act_form(soul)
       -- reduce effects gently
       nudge("delay_mix", -0.08, 0.0, 1.0)
       nudge("chorus_mix", -0.05, 0.0, 1.0)
+      -- tape: rate stays near 1.0
+      nudge("tape_rate", (1.0 - params:get("tape_rate")) * 0.3, -2.0, 2.0)
     end
   end
 end

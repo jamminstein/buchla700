@@ -88,32 +88,41 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
-			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// smooth all FM indices to prevent artifacts on parameter changes
+			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
+			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 00: symmetric dual-path
 			wsaIn = (SinOsc.ar(freq, s1*idx1) + (s3*idx2)) * idx3;
 			wsbIn = (SinOsc.ar(freq*ratio3, s1*idx4) + (s3*idx5)) * idx6;
-			wsaOut = (wsaIn * 1.5).tanh;
-			wsbOut = (wsbIn * 1.5).tanh;
+			// waveshaping: gentle softclip (no tanh — warmer)
+			wsaOut = (wsaIn * 0.9).softclip;
+			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub;
+			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
 			// noise layer
-			noiseSig = PinkNoise.ar * noise;
-			// mix: FM + sub + noise
-			mixed = ((wsaOut + wsbOut) * 0.6 + subOsc + noiseSig);
-			mixed = (mixed * (1 + (drive * 4))).tanh;
-			// LFO -> filter modulation
-			filterLfo = SinOsc.kr(lfo_filter_rate) * lfo_filter * cutoff * 0.5;
-			filtered = MoogFF.ar(mixed, (cutoff + filterLfo).clip(20,18000), resonance.clip(0,3.5));
+			noiseSig = PinkNoise.ar * noise.lag(0.05);
+			// mix FM + sub + noise
+			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
+			// frequency-tracking LPF: tames metallic partials at the SOURCE
+			// higher notes get filtered more aggressively
+			mixed = LPF.ar(mixed, (freq * 5).clip(400, 9000));
+			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
+			// filter (smoothed, conservative limits)
+			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
-			sig = filtered * env * vel * amp * tremLfo;
+			sig = filtered * env * vel * amp.lag(0.02) * tremLfo;
 			// frequency-dependent gain: tame higher notes
-			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
-			sig = Pan2.ar(sig, pan);
+			sig = sig * freq.explin(1500, 8000, 1.0, 0.3);
+			// anti-click: 2ms fade-in on note start
+			sig = sig * EnvGen.kr(Env([0, 1], [0.002]));
+			sig = Pan2.ar(sig, pan.lag(0.03));
 			Out.ar(out, sig);
 		}).add;
 
@@ -126,32 +135,41 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
-			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// smooth all FM indices to prevent artifacts on parameter changes
+			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
+			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 01: split modulators
 			wsaIn = (SinOsc.ar(freq, s1*idx1) + (s1*idx2)) * idx3;
 			wsbIn = (SinOsc.ar(freq*ratio3, s3*idx4) + (s3*idx5)) * idx6;
-			wsaOut = (wsaIn * 1.5).tanh;
-			wsbOut = (wsbIn * 1.5).tanh;
+			// waveshaping: gentle softclip (no tanh — warmer)
+			wsaOut = (wsaIn * 0.9).softclip;
+			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub;
+			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
 			// noise layer
-			noiseSig = PinkNoise.ar * noise;
-			// mix: FM + sub + noise
-			mixed = ((wsaOut + wsbOut) * 0.6 + subOsc + noiseSig);
-			mixed = (mixed * (1 + (drive * 4))).tanh;
-			// LFO -> filter modulation
-			filterLfo = SinOsc.kr(lfo_filter_rate) * lfo_filter * cutoff * 0.5;
-			filtered = MoogFF.ar(mixed, (cutoff + filterLfo).clip(20,18000), resonance.clip(0,3.5));
+			noiseSig = PinkNoise.ar * noise.lag(0.05);
+			// mix FM + sub + noise
+			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
+			// frequency-tracking LPF: tames metallic partials at the SOURCE
+			// higher notes get filtered more aggressively
+			mixed = LPF.ar(mixed, (freq * 5).clip(400, 9000));
+			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
+			// filter (smoothed, conservative limits)
+			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
-			sig = filtered * env * vel * amp * tremLfo;
+			sig = filtered * env * vel * amp.lag(0.02) * tremLfo;
 			// frequency-dependent gain: tame higher notes
-			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
-			sig = Pan2.ar(sig, pan);
+			sig = sig * freq.explin(1500, 8000, 1.0, 0.3);
+			// anti-click: 2ms fade-in on note start
+			sig = sig * EnvGen.kr(Env([0, 1], [0.002]));
+			sig = Pan2.ar(sig, pan.lag(0.03));
 			Out.ar(out, sig);
 		}).add;
 
@@ -164,32 +182,41 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
-			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// smooth all FM indices to prevent artifacts on parameter changes
+			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
+			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 02: cascaded FM with feedback
 			wsaIn = SinOsc.ar(freq, SinOsc.ar(freq*ratio2, s2*idx2)*idx1) * idx3;
 			wsbIn = SinOsc.ar(freq*ratio3, s3*idx4) * idx6;
-			wsaOut = (wsaIn * 1.5).tanh;
-			wsbOut = (wsbIn * 1.5).tanh;
+			// waveshaping: gentle softclip (no tanh — warmer)
+			wsaOut = (wsaIn * 0.9).softclip;
+			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub;
+			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
 			// noise layer
-			noiseSig = PinkNoise.ar * noise;
-			// mix: FM + sub + noise
-			mixed = ((wsaOut + wsbOut) * 0.6 + subOsc + noiseSig);
-			mixed = (mixed * (1 + (drive * 4))).tanh;
-			// LFO -> filter modulation
-			filterLfo = SinOsc.kr(lfo_filter_rate) * lfo_filter * cutoff * 0.5;
-			filtered = MoogFF.ar(mixed, (cutoff + filterLfo).clip(20,18000), resonance.clip(0,3.5));
+			noiseSig = PinkNoise.ar * noise.lag(0.05);
+			// mix FM + sub + noise
+			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
+			// frequency-tracking LPF: tames metallic partials at the SOURCE
+			// higher notes get filtered more aggressively
+			mixed = LPF.ar(mixed, (freq * 5).clip(400, 9000));
+			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
+			// filter (smoothed, conservative limits)
+			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
-			sig = filtered * env * vel * amp * tremLfo;
+			sig = filtered * env * vel * amp.lag(0.02) * tremLfo;
 			// frequency-dependent gain: tame higher notes
-			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
-			sig = Pan2.ar(sig, pan);
+			sig = sig * freq.explin(1500, 8000, 1.0, 0.3);
+			// anti-click: 2ms fade-in on note start
+			sig = sig * EnvGen.kr(Env([0, 1], [0.002]));
+			sig = Pan2.ar(sig, pan.lag(0.03));
 			Out.ar(out, sig);
 		}).add;
 
@@ -202,32 +229,41 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
-			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// smooth all FM indices to prevent artifacts on parameter changes
+			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
+			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 03: shared carrier
 			wsaIn = (s3 + (SinOsc.ar(freq, s2*idx2)*idx1)) * idx3;
 			wsbIn = (s3 + (SinOsc.ar(freq*ratio2, s2*idx5)*idx4)) * idx6;
-			wsaOut = (wsaIn * 1.5).tanh;
-			wsbOut = (wsbIn * 1.5).tanh;
+			// waveshaping: gentle softclip (no tanh — warmer)
+			wsaOut = (wsaIn * 0.9).softclip;
+			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub;
+			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
 			// noise layer
-			noiseSig = PinkNoise.ar * noise;
-			// mix: FM + sub + noise
-			mixed = ((wsaOut + wsbOut) * 0.6 + subOsc + noiseSig);
-			mixed = (mixed * (1 + (drive * 4))).tanh;
-			// LFO -> filter modulation
-			filterLfo = SinOsc.kr(lfo_filter_rate) * lfo_filter * cutoff * 0.5;
-			filtered = MoogFF.ar(mixed, (cutoff + filterLfo).clip(20,18000), resonance.clip(0,3.5));
+			noiseSig = PinkNoise.ar * noise.lag(0.05);
+			// mix FM + sub + noise
+			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
+			// frequency-tracking LPF: tames metallic partials at the SOURCE
+			// higher notes get filtered more aggressively
+			mixed = LPF.ar(mixed, (freq * 5).clip(400, 9000));
+			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
+			// filter (smoothed, conservative limits)
+			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
-			sig = filtered * env * vel * amp * tremLfo;
+			sig = filtered * env * vel * amp.lag(0.02) * tremLfo;
 			// frequency-dependent gain: tame higher notes
-			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
-			sig = Pan2.ar(sig, pan);
+			sig = sig * freq.explin(1500, 8000, 1.0, 0.3);
+			// anti-click: 2ms fade-in on note start
+			sig = sig * EnvGen.kr(Env([0, 1], [0.002]));
+			sig = Pan2.ar(sig, pan.lag(0.03));
 			Out.ar(out, sig);
 		}).add;
 
@@ -240,32 +276,41 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
-			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// smooth all FM indices to prevent artifacts on parameter changes
+			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
+			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 04: minimal FM + direct envelope
 			wsaIn = SinOsc.ar(freq, SinOsc.ar(freq*ratio2)*idx2) * idx3;
 			wsbIn = DC.ar(idx6);
-			wsaOut = (wsaIn * 1.5).tanh;
-			wsbOut = (wsbIn * 1.5).tanh;
+			// waveshaping: gentle softclip (no tanh — warmer)
+			wsaOut = (wsaIn * 0.9).softclip;
+			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub;
+			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
 			// noise layer
-			noiseSig = PinkNoise.ar * noise;
-			// mix: FM + sub + noise
-			mixed = ((wsaOut + wsbOut) * 0.6 + subOsc + noiseSig);
-			mixed = (mixed * (1 + (drive * 4))).tanh;
-			// LFO -> filter modulation
-			filterLfo = SinOsc.kr(lfo_filter_rate) * lfo_filter * cutoff * 0.5;
-			filtered = MoogFF.ar(mixed, (cutoff + filterLfo).clip(20,18000), resonance.clip(0,3.5));
+			noiseSig = PinkNoise.ar * noise.lag(0.05);
+			// mix FM + sub + noise
+			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
+			// frequency-tracking LPF: tames metallic partials at the SOURCE
+			// higher notes get filtered more aggressively
+			mixed = LPF.ar(mixed, (freq * 5).clip(400, 9000));
+			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
+			// filter (smoothed, conservative limits)
+			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
-			sig = filtered * env * vel * amp * tremLfo;
+			sig = filtered * env * vel * amp.lag(0.02) * tremLfo;
 			// frequency-dependent gain: tame higher notes
-			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
-			sig = Pan2.ar(sig, pan);
+			sig = sig * freq.explin(1500, 8000, 1.0, 0.3);
+			// anti-click: 2ms fade-in on note start
+			sig = sig * EnvGen.kr(Env([0, 1], [0.002]));
+			sig = Pan2.ar(sig, pan.lag(0.03));
 			Out.ar(out, sig);
 		}).add;
 
@@ -278,32 +323,41 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
-			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// smooth all FM indices to prevent artifacts on parameter changes
+			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
+			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 05: cross-coupled
 			wsaIn = (s1 + (SinOsc.ar(freq, s3*idx2)*idx1)) * idx3;
 			wsbIn = (s3 + (SinOsc.ar(freq*ratio3, s1*idx5)*idx4)) * idx6;
-			wsaOut = (wsaIn * 1.5).tanh;
-			wsbOut = (wsbIn * 1.5).tanh;
+			// waveshaping: gentle softclip (no tanh — warmer)
+			wsaOut = (wsaIn * 0.9).softclip;
+			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub;
+			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
 			// noise layer
-			noiseSig = PinkNoise.ar * noise;
-			// mix: FM + sub + noise
-			mixed = ((wsaOut + wsbOut) * 0.6 + subOsc + noiseSig);
-			mixed = (mixed * (1 + (drive * 4))).tanh;
-			// LFO -> filter modulation
-			filterLfo = SinOsc.kr(lfo_filter_rate) * lfo_filter * cutoff * 0.5;
-			filtered = MoogFF.ar(mixed, (cutoff + filterLfo).clip(20,18000), resonance.clip(0,3.5));
+			noiseSig = PinkNoise.ar * noise.lag(0.05);
+			// mix FM + sub + noise
+			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
+			// frequency-tracking LPF: tames metallic partials at the SOURCE
+			// higher notes get filtered more aggressively
+			mixed = LPF.ar(mixed, (freq * 5).clip(400, 9000));
+			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
+			// filter (smoothed, conservative limits)
+			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
-			sig = filtered * env * vel * amp * tremLfo;
+			sig = filtered * env * vel * amp.lag(0.02) * tremLfo;
 			// frequency-dependent gain: tame higher notes
-			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
-			sig = Pan2.ar(sig, pan);
+			sig = sig * freq.explin(1500, 8000, 1.0, 0.3);
+			// anti-click: 2ms fade-in on note start
+			sig = sig * EnvGen.kr(Env([0, 1], [0.002]));
+			sig = Pan2.ar(sig, pan.lag(0.03));
 			Out.ar(out, sig);
 		}).add;
 
@@ -316,32 +370,41 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
-			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// smooth all FM indices to prevent artifacts on parameter changes
+			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
+			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 06: three-osc cascade
 			wsaIn = SinOsc.ar(freq, (SinOsc.ar(freq*ratio2, s2*idx1)*idx2) + (s3*idx4)) * idx3;
 			wsbIn = wsaIn * (idx6/idx3.max(0.001));
-			wsaOut = (wsaIn * 1.5).tanh;
-			wsbOut = (wsbIn * 1.5).tanh;
+			// waveshaping: gentle softclip (no tanh — warmer)
+			wsaOut = (wsaIn * 0.9).softclip;
+			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub;
+			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
 			// noise layer
-			noiseSig = PinkNoise.ar * noise;
-			// mix: FM + sub + noise
-			mixed = ((wsaOut + wsbOut) * 0.6 + subOsc + noiseSig);
-			mixed = (mixed * (1 + (drive * 4))).tanh;
-			// LFO -> filter modulation
-			filterLfo = SinOsc.kr(lfo_filter_rate) * lfo_filter * cutoff * 0.5;
-			filtered = MoogFF.ar(mixed, (cutoff + filterLfo).clip(20,18000), resonance.clip(0,3.5));
+			noiseSig = PinkNoise.ar * noise.lag(0.05);
+			// mix FM + sub + noise
+			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
+			// frequency-tracking LPF: tames metallic partials at the SOURCE
+			// higher notes get filtered more aggressively
+			mixed = LPF.ar(mixed, (freq * 5).clip(400, 9000));
+			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
+			// filter (smoothed, conservative limits)
+			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
-			sig = filtered * env * vel * amp * tremLfo;
+			sig = filtered * env * vel * amp.lag(0.02) * tremLfo;
 			// frequency-dependent gain: tame higher notes
-			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
-			sig = Pan2.ar(sig, pan);
+			sig = sig * freq.explin(1500, 8000, 1.0, 0.3);
+			// anti-click: 2ms fade-in on note start
+			sig = sig * EnvGen.kr(Env([0, 1], [0.002]));
+			sig = Pan2.ar(sig, pan.lag(0.03));
 			Out.ar(out, sig);
 		}).add;
 
@@ -354,32 +417,41 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
-			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// smooth all FM indices to prevent artifacts on parameter changes
+			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
+			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 07: osc4-centric
 			wsaIn = SinOsc.ar(freq, s3*idx4) * idx3;
 			wsbIn = (s3 + (s3*idx5)) * idx6;
-			wsaOut = (wsaIn * 1.5).tanh;
-			wsbOut = (wsbIn * 1.5).tanh;
+			// waveshaping: gentle softclip (no tanh — warmer)
+			wsaOut = (wsaIn * 0.9).softclip;
+			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub;
+			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
 			// noise layer
-			noiseSig = PinkNoise.ar * noise;
-			// mix: FM + sub + noise
-			mixed = ((wsaOut + wsbOut) * 0.6 + subOsc + noiseSig);
-			mixed = (mixed * (1 + (drive * 4))).tanh;
-			// LFO -> filter modulation
-			filterLfo = SinOsc.kr(lfo_filter_rate) * lfo_filter * cutoff * 0.5;
-			filtered = MoogFF.ar(mixed, (cutoff + filterLfo).clip(20,18000), resonance.clip(0,3.5));
+			noiseSig = PinkNoise.ar * noise.lag(0.05);
+			// mix FM + sub + noise
+			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
+			// frequency-tracking LPF: tames metallic partials at the SOURCE
+			// higher notes get filtered more aggressively
+			mixed = LPF.ar(mixed, (freq * 5).clip(400, 9000));
+			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
+			// filter (smoothed, conservative limits)
+			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
-			sig = filtered * env * vel * amp * tremLfo;
+			sig = filtered * env * vel * amp.lag(0.02) * tremLfo;
 			// frequency-dependent gain: tame higher notes
-			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
-			sig = Pan2.ar(sig, pan);
+			sig = sig * freq.explin(1500, 8000, 1.0, 0.3);
+			// anti-click: 2ms fade-in on note start
+			sig = sig * EnvGen.kr(Env([0, 1], [0.002]));
+			sig = Pan2.ar(sig, pan.lag(0.03));
 			Out.ar(out, sig);
 		}).add;
 
@@ -392,32 +464,41 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
-			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// smooth all FM indices to prevent artifacts on parameter changes
+			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
+			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 08: dual-path with feedback
 			wsaIn = (SinOsc.ar(freq, SinOsc.ar(freq*ratio2)*idx2) + (s2*idx1)) * idx3;
 			wsbIn = (s3 + (s0*idx5)) * idx6;
-			wsaOut = (wsaIn * 1.5).tanh;
-			wsbOut = (wsbIn * 1.5).tanh;
+			// waveshaping: gentle softclip (no tanh — warmer)
+			wsaOut = (wsaIn * 0.9).softclip;
+			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub;
+			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
 			// noise layer
-			noiseSig = PinkNoise.ar * noise;
-			// mix: FM + sub + noise
-			mixed = ((wsaOut + wsbOut) * 0.6 + subOsc + noiseSig);
-			mixed = (mixed * (1 + (drive * 4))).tanh;
-			// LFO -> filter modulation
-			filterLfo = SinOsc.kr(lfo_filter_rate) * lfo_filter * cutoff * 0.5;
-			filtered = MoogFF.ar(mixed, (cutoff + filterLfo).clip(20,18000), resonance.clip(0,3.5));
+			noiseSig = PinkNoise.ar * noise.lag(0.05);
+			// mix FM + sub + noise
+			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
+			// frequency-tracking LPF: tames metallic partials at the SOURCE
+			// higher notes get filtered more aggressively
+			mixed = LPF.ar(mixed, (freq * 5).clip(400, 9000));
+			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
+			// filter (smoothed, conservative limits)
+			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
-			sig = filtered * env * vel * amp * tremLfo;
+			sig = filtered * env * vel * amp.lag(0.02) * tremLfo;
 			// frequency-dependent gain: tame higher notes
-			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
-			sig = Pan2.ar(sig, pan);
+			sig = sig * freq.explin(1500, 8000, 1.0, 0.3);
+			// anti-click: 2ms fade-in on note start
+			sig = sig * EnvGen.kr(Env([0, 1], [0.002]));
+			sig = Pan2.ar(sig, pan.lag(0.03));
 			Out.ar(out, sig);
 		}).add;
 
@@ -430,32 +511,41 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
-			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// smooth all FM indices to prevent artifacts on parameter changes
+			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
+			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 09: circular feedback (chaos)
 			wsaIn = SinOsc.ar(freq, s3*idx1) * idx3;
 			wsbIn = SinOsc.ar(freq*ratio3, s1*idx4) * idx6;
-			wsaOut = (wsaIn * 1.5).tanh;
-			wsbOut = (wsbIn * 1.5).tanh;
+			// waveshaping: gentle softclip (no tanh — warmer)
+			wsaOut = (wsaIn * 0.9).softclip;
+			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub;
+			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
 			// noise layer
-			noiseSig = PinkNoise.ar * noise;
-			// mix: FM + sub + noise
-			mixed = ((wsaOut + wsbOut) * 0.6 + subOsc + noiseSig);
-			mixed = (mixed * (1 + (drive * 4))).tanh;
-			// LFO -> filter modulation
-			filterLfo = SinOsc.kr(lfo_filter_rate) * lfo_filter * cutoff * 0.5;
-			filtered = MoogFF.ar(mixed, (cutoff + filterLfo).clip(20,18000), resonance.clip(0,3.5));
+			noiseSig = PinkNoise.ar * noise.lag(0.05);
+			// mix FM + sub + noise
+			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
+			// frequency-tracking LPF: tames metallic partials at the SOURCE
+			// higher notes get filtered more aggressively
+			mixed = LPF.ar(mixed, (freq * 5).clip(400, 9000));
+			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
+			// filter (smoothed, conservative limits)
+			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
-			sig = filtered * env * vel * amp * tremLfo;
+			sig = filtered * env * vel * amp.lag(0.02) * tremLfo;
 			// frequency-dependent gain: tame higher notes
-			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
-			sig = Pan2.ar(sig, pan);
+			sig = sig * freq.explin(1500, 8000, 1.0, 0.3);
+			// anti-click: 2ms fade-in on note start
+			sig = sig * EnvGen.kr(Env([0, 1], [0.002]));
+			sig = Pan2.ar(sig, pan.lag(0.03));
 			Out.ar(out, sig);
 		}).add;
 
@@ -468,32 +558,41 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
-			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// smooth all FM indices to prevent artifacts on parameter changes
+			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
+			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 10: shared modulator
 			wsaIn = (SinOsc.ar(freq, s1*idx2) + (s2*idx1)) * idx3;
 			wsbIn = (SinOsc.ar(freq*ratio3, s1*idx5) + (s0*idx4)) * idx6;
-			wsaOut = (wsaIn * 1.5).tanh;
-			wsbOut = (wsbIn * 1.5).tanh;
+			// waveshaping: gentle softclip (no tanh — warmer)
+			wsaOut = (wsaIn * 0.9).softclip;
+			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub;
+			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
 			// noise layer
-			noiseSig = PinkNoise.ar * noise;
-			// mix: FM + sub + noise
-			mixed = ((wsaOut + wsbOut) * 0.6 + subOsc + noiseSig);
-			mixed = (mixed * (1 + (drive * 4))).tanh;
-			// LFO -> filter modulation
-			filterLfo = SinOsc.kr(lfo_filter_rate) * lfo_filter * cutoff * 0.5;
-			filtered = MoogFF.ar(mixed, (cutoff + filterLfo).clip(20,18000), resonance.clip(0,3.5));
+			noiseSig = PinkNoise.ar * noise.lag(0.05);
+			// mix FM + sub + noise
+			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
+			// frequency-tracking LPF: tames metallic partials at the SOURCE
+			// higher notes get filtered more aggressively
+			mixed = LPF.ar(mixed, (freq * 5).clip(400, 9000));
+			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
+			// filter (smoothed, conservative limits)
+			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
-			sig = filtered * env * vel * amp * tremLfo;
+			sig = filtered * env * vel * amp.lag(0.02) * tremLfo;
 			// frequency-dependent gain: tame higher notes
-			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
-			sig = Pan2.ar(sig, pan);
+			sig = sig * freq.explin(1500, 8000, 1.0, 0.3);
+			// anti-click: 2ms fade-in on note start
+			sig = sig * EnvGen.kr(Env([0, 1], [0.002]));
+			sig = Pan2.ar(sig, pan.lag(0.03));
 			Out.ar(out, sig);
 		}).add;
 
@@ -506,32 +605,41 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2);
-			s2 = SinOsc.ar(freq*ratio3); s3 = SinOsc.ar(freq*ratio4);
+			// smooth all FM indices to prevent artifacts on parameter changes
+			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
+			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
+			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 11: multi-output
 			wsaIn = (SinOsc.ar(freq, SinOsc.ar(freq*ratio3)*idx5) + (s0*idx1) + (s3*idx4)) * idx3;
 			wsbIn = (SinOsc.ar(freq, SinOsc.ar(freq*ratio3)*idx5) + (s1*idx2)) * idx6;
-			wsaOut = (wsaIn * 1.5).tanh;
-			wsbOut = (wsbIn * 1.5).tanh;
+			// waveshaping: gentle softclip (no tanh — warmer)
+			wsaOut = (wsaIn * 0.9).softclip;
+			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub;
+			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
 			// noise layer
-			noiseSig = PinkNoise.ar * noise;
-			// mix: FM + sub + noise
-			mixed = ((wsaOut + wsbOut) * 0.6 + subOsc + noiseSig);
-			mixed = (mixed * (1 + (drive * 4))).tanh;
-			// LFO -> filter modulation
-			filterLfo = SinOsc.kr(lfo_filter_rate) * lfo_filter * cutoff * 0.5;
-			filtered = MoogFF.ar(mixed, (cutoff + filterLfo).clip(20,18000), resonance.clip(0,3.5));
+			noiseSig = PinkNoise.ar * noise.lag(0.05);
+			// mix FM + sub + noise
+			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
+			// frequency-tracking LPF: tames metallic partials at the SOURCE
+			// higher notes get filtered more aggressively
+			mixed = LPF.ar(mixed, (freq * 5).clip(400, 9000));
+			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
+			// filter (smoothed, conservative limits)
+			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
+			filtered = MoogFF.ar(mixed, (cutoff.lag(0.05) + filterLfo).clip(30,10000), resonance.lag(0.05).clip(0,2.0));
 			filtered = LeakDC.ar(filtered);
 			// tremolo
 			tremLfo = 1 - (SinOsc.kr(trem_rate).range(0,1) * trem_depth);
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
-			sig = filtered * env * vel * amp * tremLfo;
+			sig = filtered * env * vel * amp.lag(0.02) * tremLfo;
 			// frequency-dependent gain: tame higher notes
-			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
-			sig = Pan2.ar(sig, pan);
+			sig = sig * freq.explin(1500, 8000, 1.0, 0.3);
+			// anti-click: 2ms fade-in on note start
+			sig = sig * EnvGen.kr(Env([0, 1], [0.002]));
+			sig = Pan2.ar(sig, pan.lag(0.03));
 			Out.ar(out, sig);
 		}).add;
 
@@ -541,7 +649,8 @@ Engine_Bucha : CroneEngine {
 			exciterAmount=0.3, tilt=0.0,
 			delayTime=0.3, delayFeedback=0.4, delayMix=0.0,
 			reverbSize=0.6, reverbDamp=0.5, reverbMix=0.0,
-			chorusRate=0.5, chorusMix=0.0;
+			chorusRate=0.5, chorusMix=0.0,
+			audioIn=0.0;
 
 			var sig, left, right;
 			var lhf, rhf, lHarm, rHarm, lExc, rExc;
@@ -549,79 +658,105 @@ Engine_Bucha : CroneEngine {
 			var allpassFreqs, apL, apR;
 			var delL, delR, revSig, chorusL, chorusR;
 			var excAmt;
+			// multiband compressor vars
+			var mbLoL, mbLoR, mbMidL, mbMidR, mbHiL, mbHiR;
 
 			sig = In.ar(in, 2);
+			// mix in external audio input
+			sig = sig + (SoundIn.ar([0,1]) * audioIn.lag(0.1));
 			left = sig[0];
 			right = sig[1];
 
-			// ---- AURAL EXCITER ----
-			// extract HF band 1-12kHz
-			excAmt = exciterAmount.lag(0.1);
-			lhf = BPF.ar(left, 3000, 1.5);
-			rhf = BPF.ar(right, 3000, 1.5);
+			// ---- HF ROLLOFF ----
+			left = LPF.ar(left, 11000);
+			right = LPF.ar(right, 11000);
 
-			// generate 2nd + 3rd order harmonics
-			lHarm = ((lhf * lhf * lhf.sign * 2) + (lhf * lhf * lhf * 0.5)).softclip;
-			rHarm = ((rhf * rhf * rhf.sign * 2) + (rhf * rhf * rhf * 0.5)).softclip;
+			// ---- MULTIBAND DYNAMICS (the key to taming FM) ----
+			// Split into 3 bands: low (<800), mid (800-4k), high (>4k)
+			// Compress the mid+high bands to tame metallic bells
 
-			// mix back
-			lExc = left + (lHarm * excAmt) + (left * 0.3 * excAmt);
-			rExc = right + (rHarm * excAmt) + (right * 0.3 * excAmt);
-			left = lExc.softclip;
-			right = rExc.softclip;
+			// LOW: untouched (warmth, body)
+			mbLoL = LPF.ar(left, 800);
+			mbLoR = LPF.ar(right, 800);
+
+			// MID (800-4kHz): the metallic bell zone — compress it
+			mbMidL = BPF.ar(left, 2000, 1.2);
+			mbMidR = BPF.ar(right, 2000, 1.2);
+			mbMidL = Compander.ar(mbMidL, mbMidL, 0.15, 1, 0.4, 0.003, 0.06);
+			mbMidR = Compander.ar(mbMidR, mbMidR, 0.15, 1, 0.4, 0.003, 0.06);
+
+			// HIGH (>4kHz): presence/air — compress harder
+			mbHiL = HPF.ar(left, 4000);
+			mbHiR = HPF.ar(right, 4000);
+			mbHiL = Compander.ar(mbHiL, mbHiL, 0.1, 1, 0.3, 0.002, 0.04);
+			mbHiR = Compander.ar(mbHiR, mbHiR, 0.1, 1, 0.3, 0.002, 0.04);
+
+			// Recombine bands
+			left = mbLoL + mbMidL + mbHiL;
+			right = mbLoR + mbMidR + mbHiR;
+
+			// ---- AURAL EXCITER (subtle) ----
+			excAmt = exciterAmount.lag(0.1) * 0.4;
+			lhf = BPF.ar(left, 4000, 0.8);
+			rhf = BPF.ar(right, 4000, 0.8);
+			lHarm = (lhf * lhf * lhf.sign).softclip;
+			rHarm = (rhf * rhf * rhf.sign).softclip;
+			left = left + (lHarm * excAmt);
+			right = right + (rHarm * excAmt);
+			left = left.softclip;
+			right = right.softclip;
 
 			// ---- 8-STAGE PHASE SHIFTER ----
-			// LFO: 70% soft sine + 30% triangle
-			lfo = SinOsc.kr(phaserRate);
+			lfo = SinOsc.kr(phaserRate.lag(0.05));
 			lfoSoft = lfo * (1.5 - (0.5 * lfo * lfo));
-			lfoTri = LFTri.kr(phaserRate);
+			lfoTri = LFTri.kr(phaserRate.lag(0.05));
 			lfoBlend = (lfoSoft * 0.7) + (lfoTri * 0.3);
 
-			// 8 cascaded allpass stages with fixed base frequencies
-			// modulated by LFO for phasing effect
 			apL = left;
 			apR = right;
 			[400, 600, 900, 1300, 1800, 2400, 3100, 3900].do { |baseFreq, i|
-				var modAmt = lfoBlend * phaserDepth * 0.3 * phaserIntensity;
+				var modAmt = lfoBlend * phaserDepth.lag(0.05) * 0.3 * phaserIntensity.lag(0.05);
 				var delayL = (1.0 / (baseFreq * (1 + modAmt))).clip(0.00002, 0.01);
 				var delayR = (1.0 / (baseFreq * 0.85 * (1 + modAmt))).clip(0.00002, 0.01);
-				apL = AllpassL.ar(apL, 0.01, delayL, 0.0);
-				apR = AllpassL.ar(apR, 0.01, delayR, 0.0);
+				apL = AllpassC.ar(apL, 0.01, delayL, 0.0);
+				apR = AllpassC.ar(apR, 0.01, delayR, 0.0);
 			};
 
-			// mix: shifted + dry, scaled by intensity
-			left = (apL * 0.8 * phaserIntensity) + (left * (1 - (phaserIntensity * 0.8)));
-			right = (apR * 0.8 * phaserIntensity) + (right * (1 - (phaserIntensity * 0.8)));
+			left = (apL * 0.8 * phaserIntensity.lag(0.05)) + (left * (1 - (phaserIntensity.lag(0.05) * 0.8)));
+			right = (apR * 0.8 * phaserIntensity.lag(0.05)) + (right * (1 - (phaserIntensity.lag(0.05) * 0.8)));
 
 			// ---- TILT EQ ----
-			// tilt < 0 = dark (boost low, cut high)
-			// tilt > 0 = bright (cut low, boost high)
-			left = BLowShelf.ar(left, 300, 1, tilt.neg * 6);
-			left = BHiShelf.ar(left, 3000, 1, tilt * 6);
-			right = BLowShelf.ar(right, 300, 1, tilt.neg * 6);
-			right = BHiShelf.ar(right, 3000, 1, tilt * 6);
+			left = BLowShelf.ar(left, 300, 1, tilt.lag(0.05).neg * 6);
+			left = BHiShelf.ar(left, 3000, 1, tilt.lag(0.05) * 5);
+			right = BLowShelf.ar(right, 300, 1, tilt.lag(0.05).neg * 6);
+			right = BHiShelf.ar(right, 3000, 1, tilt.lag(0.05) * 5);
 
 			// ---- STEREO DELAY ----
-			delL = CombL.ar(left, 1.0, delayTime.clip(0.01, 1.0), delayFeedback.clip(0, 0.85) * 3);
-			delR = CombL.ar(right, 1.0, (delayTime * 0.75).clip(0.01, 1.0), delayFeedback.clip(0, 0.85) * 3);
-			left = left + (delL * delayMix);
-			right = right + (delR * delayMix);
+			delL = CombC.ar(left, 1.0, delayTime.lag(0.05).clip(0.01, 1.0), delayFeedback.lag(0.03).clip(0, 0.8) * 2.5);
+			delR = CombC.ar(right, 1.0, (delayTime.lag(0.05) * 0.75).clip(0.01, 1.0), delayFeedback.lag(0.03).clip(0, 0.8) * 2.5);
+			// filter the delay returns to prevent metallic buildup
+			delL = LPF.ar(delL, 6000);
+			delR = LPF.ar(delR, 6000);
+			left = left + (delL * delayMix.lag(0.03));
+			right = right + (delR * delayMix.lag(0.03));
 
 			// ---- CHORUS ----
-			chorusL = DelayL.ar(left, 0.05,
-				SinOsc.kr(chorusRate, 0).range(0.005, 0.02));
-			chorusR = DelayL.ar(right, 0.05,
-				SinOsc.kr(chorusRate * 1.1, 0.5pi).range(0.005, 0.02));
-			left = left + (chorusL * chorusMix);
-			right = right + (chorusR * chorusMix);
+			chorusL = DelayC.ar(left, 0.05,
+				SinOsc.kr(chorusRate.lag(0.1), 0).range(0.005, 0.02));
+			chorusR = DelayC.ar(right, 0.05,
+				SinOsc.kr(chorusRate.lag(0.1) * 1.1, 0.5pi).range(0.005, 0.02));
+			left = left + (chorusL * chorusMix.lag(0.03));
+			right = right + (chorusR * chorusMix.lag(0.03));
 
 			// ---- REVERB ----
-			revSig = FreeVerb2.ar(left, right, reverbMix, reverbSize, reverbDamp);
+			revSig = FreeVerb2.ar(left, right, reverbMix.lag(0.05), reverbSize.lag(0.05), reverbDamp.lag(0.05));
 			left = revSig[0];
 			right = revSig[1];
 
-			// gentle brick-wall limiter (longer lookahead = less pumping artifacts)
-			sig = Limiter.ar([left, right], 0.9, 0.02);
+			// ---- FINAL: soft saturation + brick wall ----
+			left = (left * 0.9).softclip;
+			right = (right * 0.9).softclip;
+			sig = Limiter.ar([left, right], 0.85, 0.04);
 
 			Out.ar(out, sig);
 		}).add;
@@ -647,9 +782,10 @@ Engine_Bucha : CroneEngine {
 			var freq = note.midicps;
 			var synthName;
 
-			// kill existing voice on same note
+			// kill existing voice on same note (quick fade to avoid click)
 			if (voices[note].notNil) {
-				voices[note].set(\gate, 0);
+				var old = voices[note];
+				old.set(\gate, 0, \rel, 0.008);  // 8ms release = no click
 				voices[note] = nil;
 			};
 
@@ -667,12 +803,12 @@ Engine_Bucha : CroneEngine {
 				\ratio2, params[\ratio2],
 				\ratio3, params[\ratio3],
 				\ratio4, params[\ratio4],
-				\idx1, params[\index1] * params[\masterIndex],
-				\idx2, params[\index2] * params[\masterIndex],
-				\idx3, params[\index3] * params[\masterIndex],
-				\idx4, params[\index4] * params[\masterIndex],
-				\idx5, params[\index5] * params[\masterIndex],
-				\idx6, params[\index6] * params[\masterIndex],
+				\idx1, (params[\index1] * params[\masterIndex]).clip(0, 1.8),
+				\idx2, (params[\index2] * params[\masterIndex]).clip(0, 1.8),
+				\idx3, (params[\index3] * params[\masterIndex]).clip(0, 1.8),
+				\idx4, (params[\index4] * params[\masterIndex]).clip(0, 1.8),
+				\idx5, (params[\index5] * params[\masterIndex]).clip(0, 1.8),
+				\idx6, (params[\index6] * params[\masterIndex]).clip(0, 1.8),
 				\cutoff, params[\cutoff],
 				\resonance, params[\resonance],
 				\drive, params[\drive],
@@ -723,43 +859,43 @@ Engine_Bucha : CroneEngine {
 
 		this.addCommand("index1", "f", { arg msg;
 			params[\index1] = msg[1].asFloat;
-			voices.do({ arg s; s.set(\idx1, params[\index1] * params[\masterIndex]) });
+			voices.do({ arg s; s.set(\idx1, (params[\index1] * params[\masterIndex]).clip(0, 1.8)) });
 		});
 
 		this.addCommand("index2", "f", { arg msg;
 			params[\index2] = msg[1].asFloat;
-			voices.do({ arg s; s.set(\idx2, params[\index2] * params[\masterIndex]) });
+			voices.do({ arg s; s.set(\idx2, (params[\index2] * params[\masterIndex]).clip(0, 1.8)) });
 		});
 
 		this.addCommand("index3", "f", { arg msg;
 			params[\index3] = msg[1].asFloat;
-			voices.do({ arg s; s.set(\idx3, params[\index3] * params[\masterIndex]) });
+			voices.do({ arg s; s.set(\idx3, (params[\index3] * params[\masterIndex]).clip(0, 1.8)) });
 		});
 
 		this.addCommand("index4", "f", { arg msg;
 			params[\index4] = msg[1].asFloat;
-			voices.do({ arg s; s.set(\idx4, params[\index4] * params[\masterIndex]) });
+			voices.do({ arg s; s.set(\idx4, (params[\index4] * params[\masterIndex]).clip(0, 1.8)) });
 		});
 
 		this.addCommand("index5", "f", { arg msg;
 			params[\index5] = msg[1].asFloat;
-			voices.do({ arg s; s.set(\idx5, params[\index5] * params[\masterIndex]) });
+			voices.do({ arg s; s.set(\idx5, (params[\index5] * params[\masterIndex]).clip(0, 1.8)) });
 		});
 
 		this.addCommand("index6", "f", { arg msg;
 			params[\index6] = msg[1].asFloat;
-			voices.do({ arg s; s.set(\idx6, params[\index6] * params[\masterIndex]) });
+			voices.do({ arg s; s.set(\idx6, (params[\index6] * params[\masterIndex]).clip(0, 1.8)) });
 		});
 
 		this.addCommand("master_index", "f", { arg msg;
 			params[\masterIndex] = msg[1].asFloat;
 			voices.do({ arg s;
-				s.set(\idx1, params[\index1] * params[\masterIndex]);
-				s.set(\idx2, params[\index2] * params[\masterIndex]);
-				s.set(\idx3, params[\index3] * params[\masterIndex]);
-				s.set(\idx4, params[\index4] * params[\masterIndex]);
-				s.set(\idx5, params[\index5] * params[\masterIndex]);
-				s.set(\idx6, params[\index6] * params[\masterIndex]);
+				s.set(\idx1, (params[\index1] * params[\masterIndex]).clip(0, 1.8));
+				s.set(\idx2, (params[\index2] * params[\masterIndex]).clip(0, 1.8));
+				s.set(\idx3, (params[\index3] * params[\masterIndex]).clip(0, 1.8));
+				s.set(\idx4, (params[\index4] * params[\masterIndex]).clip(0, 1.8));
+				s.set(\idx5, (params[\index5] * params[\masterIndex]).clip(0, 1.8));
+				s.set(\idx6, (params[\index6] * params[\masterIndex]).clip(0, 1.8));
 			});
 		});
 
@@ -894,6 +1030,9 @@ Engine_Bucha : CroneEngine {
 		});
 		this.addCommand("chorus_mix", "f", { arg msg;
 			fxSynth.set(\chorusMix, msg[1].asFloat);
+		});
+		this.addCommand("audio_in", "f", { arg msg;
+			fxSynth.set(\audioIn, msg[1].asFloat);
 		});
 	}
 

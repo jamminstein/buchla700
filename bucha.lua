@@ -109,6 +109,30 @@ local grid_dirty = true
 local grid_held = {}  -- track held keys for gestures
 local index_values = {0.5, 0.3, 0.2, 0.1, 0.1, 0.1}  -- local tracking for grid display
 
+-- grid keyboard mode
+local grid_mode = "FADERS"  -- "FADERS" or "KEYS"
+local grid_keys_held = {}   -- track held notes for keyboard mode {[col_row_key] = midi_note}
+
+-- preset snapshots
+local presets = {}  -- 8 slots: presets[1..8] = {param_name = value, ...}
+local preset_active = 0  -- currently recalling slot (0 = none)
+local preset_press_time = {}  -- for long-press detection
+
+-- scale lock
+local scale_lock_scale = {}  -- cached scale array for snap_note_to_array
+local SCALE_NAMES = {"OFF"}
+for i = 1, #musicutil.SCALES do
+  table.insert(SCALE_NAMES, musicutil.SCALES[i].name)
+end
+local NOTE_NAMES = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}
+
+-- softcut tape loop
+local tape_loop_length = 4  -- beats
+
+-- duo mode
+local duo_voice = "A"  -- which voice is currently speaking
+local duo_phrase_count = 0
+
 -- screen
 local screen_dirty = true
 local anim_phase = 0
@@ -128,6 +152,115 @@ local TOPOLOGY_CONNECTIONS = {
   [10] = {{2,1,2},{2,3,5},{3,1,1},{1,3,4}},
   [11] = {{3,1,5},{1,0,1},{2,0,2},{4,0,4}},
 }
+
+-- --------------------------------------------------------------------------
+-- scale lock helper
+-- --------------------------------------------------------------------------
+
+local function rebuild_scale()
+  local lock_idx = params:get("scale_lock")
+  if lock_idx == 1 then
+    -- OFF
+    scale_lock_scale = {}
+    return
+  end
+  local scale_idx = lock_idx - 1
+  local root_num = params:get("scale_root") - 1  -- 0-11
+  -- generate_scale wants a MIDI root note; generate from low C + root
+  scale_lock_scale = musicutil.generate_scale(0 + root_num, musicutil.SCALES[scale_idx].name, 10)
+end
+
+local function quantize_note(note)
+  if #scale_lock_scale == 0 then return note end
+  return musicutil.snap_note_to_array(note, scale_lock_scale)
+end
+
+-- --------------------------------------------------------------------------
+-- preset snapshot helpers
+-- --------------------------------------------------------------------------
+
+local PRESET_PARAMS = {
+  "config", "master_index", "index1", "index2", "index3", "index4", "index5", "index6",
+  "ratio2", "ratio3", "ratio4", "wsa_preset", "wsb_preset",
+  "cutoff", "resonance", "drive", "attack", "decay", "sustain_level", "release",
+  "noise", "sub_osc", "trem_rate", "trem_depth", "lfo_filter", "lfo_filter_rate",
+  "delay_time", "delay_feedback", "delay_mix", "reverb_size", "reverb_damp", "reverb_mix",
+  "chorus_rate", "chorus_mix", "phaser_intensity", "phaser_rate",
+  "exciter_amount", "tilt_eq"
+}
+
+local PRESET_OPTION_PARAMS = {config=true, wsa_preset=true, wsb_preset=true}
+
+local function save_preset(slot)
+  presets[slot] = {}
+  for _, name in ipairs(PRESET_PARAMS) do
+    presets[slot][name] = params:get(name)
+  end
+end
+
+local function recall_preset(slot)
+  if not presets[slot] then return end
+  preset_active = slot
+  clock.run(function()
+    local target = presets[slot]
+    local start = {}
+    for _, name in ipairs(PRESET_PARAMS) do
+      start[name] = params:get(name)
+    end
+    local steps = 20
+    for step = 1, steps do
+      local t = step / steps
+      for _, name in ipairs(PRESET_PARAMS) do
+        if PRESET_OPTION_PARAMS[name] then
+          -- snap option params at halfway
+          if t >= 0.5 then
+            params:set(name, target[name])
+          end
+        else
+          -- lerp numeric params
+          local v = start[name] + (target[name] - start[name]) * t
+          params:set(name, v)
+        end
+      end
+      clock.sleep(0.025)
+    end
+    preset_active = 0
+    grid_dirty = true
+  end)
+end
+
+-- --------------------------------------------------------------------------
+-- softcut tape loop setup
+-- --------------------------------------------------------------------------
+
+local function init_softcut()
+  softcut.buffer_clear()
+  -- voice 1: tape loop
+  softcut.enable(1, 1)
+  softcut.buffer(1, 1)
+  softcut.level(1, 1.0)
+  softcut.pan(1, 0)
+  softcut.rate(1, 1.0)
+  softcut.loop(1, 1)
+  softcut.loop_start(1, 0)
+  local loop_len = clock.get_beat_sec() * tape_loop_length
+  softcut.loop_end(1, loop_len)
+  softcut.position(1, 0)
+  softcut.play(1, 1)
+  softcut.rec(1, 1)
+  softcut.rec_level(1, 0)   -- tape_rec controls this
+  softcut.pre_level(1, 0.8) -- tape_feedback controls this
+  softcut.fade_time(1, 0.01)
+  softcut.rate_slew_time(1, 0.1)
+  -- filter on playback
+  softcut.post_filter_lp(1, 1.0)
+  softcut.post_filter_hp(1, 0.0)
+  softcut.post_filter_bp(1, 0.0)
+  softcut.post_filter_dry(1, 0.0)
+  softcut.post_filter_fc(1, 4000)
+  -- route engine to softcut
+  audio.level_eng_cut(1)
+end
 
 -- --------------------------------------------------------------------------
 -- init
@@ -150,7 +283,7 @@ function init()
   end)
 
   params:add_control("master_index", "master index",
-    controlspec.new(0, 2, 'lin', 0.01, 0.5, ""))
+    controlspec.new(0, 1.5, 'lin', 0.01, 0.5, ""))
   params:set_action("master_index", function(v)
     master_index = v
     engine.master_index(v)
@@ -381,10 +514,57 @@ function init()
   end)
 
   -- MIDI
-  params:add_group("MIDI", 3)
+  params:add_group("MIDI", 5)
   params:add_number("midi_in_ch", "midi in ch", 1, 16, 1)
   params:add_number("midi_out_ch", "midi out ch", 1, 16, 1)
   params:add_number("midi_out_device", "midi out device", 1, 16, 2)
+  params:add_option("cc_out_enabled", "CC out", {"off", "on"}, 1)
+  params:add_number("cc_out_channel", "CC out ch", 1, 16, 1)
+
+  -- SCALE LOCK
+  params:add_group("SCALE LOCK", 2)
+  params:add_option("scale_lock", "scale lock", SCALE_NAMES, 1)
+  params:set_action("scale_lock", function(v) rebuild_scale() end)
+  params:add_option("scale_root", "scale root", NOTE_NAMES, 1)
+  params:set_action("scale_root", function(v) rebuild_scale() end)
+
+  -- AUDIO INPUT
+  params:add_group("AUDIO INPUT", 1)
+  params:add_control("audio_in", "audio in",
+    controlspec.new(0, 1, 'lin', 0.01, 0, ""))
+  params:set_action("audio_in", function(v) engine.audio_in(v) end)
+
+  -- SOFTCUT TAPE LOOP
+  params:add_group("TAPE LOOP", 5)
+  params:add_control("tape_rec", "tape rec",
+    controlspec.new(0, 1, 'lin', 0.01, 0, ""))
+  params:set_action("tape_rec", function(v)
+    softcut.rec_level(1, v)
+  end)
+  params:add_control("tape_play", "tape play",
+    controlspec.new(0, 1, 'lin', 0.01, 0, ""))
+  params:set_action("tape_play", function(v)
+    softcut.level(1, v)
+  end)
+  params:add_control("tape_rate", "tape rate",
+    controlspec.new(-2.0, 2.0, 'lin', 0.01, 1.0, "x"))
+  params:set_action("tape_rate", function(v)
+    softcut.rate(1, v)
+  end)
+  params:add_control("tape_feedback", "tape feedback",
+    controlspec.new(0, 0.95, 'lin', 0.01, 0.5, ""))
+  params:set_action("tape_feedback", function(v)
+    softcut.pre_level(1, v)
+  end)
+  params:add_control("tape_filter", "tape filter",
+    controlspec.new(200, 8000, 'exp', 0, 4000, "hz"))
+  params:set_action("tape_filter", function(v)
+    softcut.post_filter_fc(1, v)
+  end)
+
+  -- DUO MODE
+  params:add_group("DUO MODE", 1)
+  params:add_option("duo_mode", "duo mode", {"off", "on"}, 1)
 
   -- connect MIDI
   midi_in_device = midi.connect(1)
@@ -393,10 +573,12 @@ function init()
 
   -- init modules
   seq.init()
+  init_softcut()
+  rebuild_scale()
 
   -- autonomous note callbacks
-  local auto_note_fn = function(note, vel, gate)
-    note_on(note, vel)
+  local auto_note_fn = function(note, vel, gate, pan_val)
+    note_on(note, vel, pan_val)
     clock.run(function()
       clock.sleep(gate * clock.get_beat_sec())
       note_off(note)
@@ -442,6 +624,24 @@ function init()
   octopus_sprocket = my_lattice:new_sprocket{
     action = function(t)
       octopus.tick()
+      -- CC output: send tentacle energies + key params as CC
+      if params:get("cc_out_enabled") == 2 and octopus.active then
+        local cc_ch = params:get("cc_out_channel")
+        -- tentacle energies -> CC 20-27
+        for i = 1, 8 do
+          local e = octopus.get_tentacle_energy(i)
+          midi_out_device:cc(19 + i, math.floor(e * 127), cc_ch)
+        end
+        -- cutoff -> CC 74
+        local cut_cc = math.floor(util.linlin(20, 18000, 0, 127, params:get("cutoff")))
+        midi_out_device:cc(74, util.clamp(cut_cc, 0, 127), cc_ch)
+        -- resonance -> CC 71
+        local res_cc = math.floor(util.linlin(0, 3.5, 0, 127, params:get("resonance")))
+        midi_out_device:cc(71, util.clamp(res_cc, 0, 127), cc_ch)
+        -- master_index -> CC 1
+        local idx_cc = math.floor(util.linlin(0, 1.5, 0, 127, params:get("master_index")))
+        midi_out_device:cc(1, util.clamp(idx_cc, 0, 127), cc_ch)
+      end
       grid_dirty = true
     end,
     division = 1/16,  -- 16th notes — the octopus moves FAST
@@ -489,8 +689,12 @@ function midi_event(data)
   end
 end
 
-function note_on(note, vel)
+function note_on(note, vel, pan_override)
+  note = quantize_note(note)
   engine.note_on(note, vel)
+  if pan_override then
+    engine.pan(note, pan_override)
+  end
   local ch = params:get("midi_out_ch")
   midi_out_device:note_on(note, math.floor(vel * 127), ch)
   current_note = note
@@ -498,6 +702,7 @@ function note_on(note, vel)
 end
 
 function note_off(note)
+  note = quantize_note(note)
   engine.note_off(note)
   local ch = params:get("midi_out_ch")
   midi_out_device:note_off(note, 0, ch)
@@ -1144,6 +1349,22 @@ function draw_octopus_page()
   screen.rect(96, 9, progress * 30, 2)
   screen.fill()
 
+  -- duo mode labels near melody/topology tentacles
+  if params:get("duo_mode") == 2 and octopus.active then
+    local melody_angle = (5 - 1) * (2 * math.pi / 8) - math.pi / 2  -- MELODY = tentacle 5
+    local topo_angle = (1 - 1) * (2 * math.pi / 8) - math.pi / 2   -- TOPOLOGY = tentacle 1
+    local a_x = cx + math.cos(melody_angle) * 28
+    local a_y = cy + math.sin(melody_angle) * 28
+    local b_x = cx + math.cos(topo_angle) * 28
+    local b_y = cy + math.sin(topo_angle) * 28
+    screen.level(octopus.duo_voice == "A" and 15 or 4)
+    screen.move(a_x - 2, a_y + 3)
+    screen.text("A")
+    screen.level(octopus.duo_voice == "B" and 15 or 4)
+    screen.move(b_x - 2, b_y + 3)
+    screen.text("B")
+  end
+
   -- active / bandmate
   if octopus.active then
     screen.level(math.floor(4 + total_energy * 8))
@@ -1181,6 +1402,19 @@ end
 --           [status: explorer intensity col 15, bandmate energy col 16]
 
 function grid_key(x, y, z)
+  -- GRID MODE TOGGLE: col 16, row 8
+  if x == 16 and y == 8 and z == 1 then
+    grid_mode = (grid_mode == "FADERS") and "KEYS" or "FADERS"
+    -- release all held keyboard notes on mode switch
+    for k, note in pairs(grid_keys_held) do
+      note_off(note)
+      grid_keys_held[k] = nil
+    end
+    grid_dirty = true
+    screen_dirty = true
+    return
+  end
+
   if z == 1 then
     -- ROW 1: topology select + system toggles
     if y == 1 then
@@ -1235,52 +1469,89 @@ function grid_key(x, y, z)
         if step.config > 11 then step.config = -1 end
       end
 
-    -- ROWS 5-8: index faders + controls
+    -- ROWS 5-8: keyboard mode OR fader mode
     elseif y >= 5 and y <= 8 then
-      -- cols 1-6: FM index faders (vertical, 4 rows = 4 levels per index)
-      if x >= 1 and x <= 6 then
-        -- map row 5-8 to value: row 5 = high (1.5), row 8 = low (0.0)
-        local val = util.linlin(8, 5, 0, 1.5, y)
-        params:set("index" .. x, val)
-      -- col 8-16, row 5: master index horizontal fader
-      elseif x >= 8 and x <= 16 and y == 5 then
-        local val = util.linlin(8, 16, 0, 2.0, x)
-        params:set("master_index", val)
-      -- col 8-12, row 6: bandmate voice
-      elseif x >= 8 and x <= 12 and y == 6 then
-        local voice_idx = x - 7
-        if voice_idx >= 1 and voice_idx <= #BANDMATE_VOICES then
-          params:set("bandmate_voice", voice_idx)
-        end
-      -- col 8-11, row 7: force explorer phase
-      elseif x >= 8 and x <= 11 and y == 7 then
-        if explorer.active then
-          explorer.enter_phase(x - 7)
-        end
-      -- col 13-16, row 7: randomize actions
-      elseif y == 7 then
-        if x == 13 then
-          -- random topology
-          config = math.random(0, 11)
-          params:set("config", config + 1)
-        elseif x == 14 then
-          -- random ratios
-          for i = 1, 3 do
-            ratio_idx[i] = math.random(1, #RATIOS)
-            params:set("ratio" .. (i + 1), RATIOS[ratio_idx[i]])
+      if grid_mode == "KEYS" then
+        -- KEYBOARD MODE: isomorphic keyboard on rows 5-8
+        local root = params:get("bandmate_root")
+        local octave = 8 - y  -- row 8=0, row 7=1, row 6=2, row 5=3 (highest)
+        local semitone = x - 1
+        local midi_note = root + (octave * 12) + semitone
+        local vel_map = {[5]=1.0, [6]=0.8, [7]=0.6, [8]=0.45}
+        local vel = vel_map[y] or 0.7
+        local key = x .. "_" .. y
+        note_on(midi_note, vel)
+        grid_keys_held[key] = midi_note
+      else
+        -- FADER MODE (original behavior)
+        -- cols 1-6: FM index faders (vertical, 4 rows = 4 levels per index)
+        if x >= 1 and x <= 6 then
+          local val = util.linlin(8, 5, 0, 1.5, y)
+          params:set("index" .. x, val)
+        -- col 8-16, row 5: master index horizontal fader
+        elseif x >= 8 and x <= 16 and y == 5 then
+          local val = util.linlin(8, 16, 0, 2.0, x)
+          params:set("master_index", val)
+        -- col 8-12, row 6: bandmate voice
+        elseif x >= 8 and x <= 12 and y == 6 then
+          local voice_idx = x - 7
+          if voice_idx >= 1 and voice_idx <= #BANDMATE_VOICES then
+            params:set("bandmate_voice", voice_idx)
           end
-        elseif x == 15 then
-          -- random indices
-          for i = 1, 6 do
-            params:set("index" .. i, math.random() * 1.5)
+        -- col 8-11, row 7: force explorer phase
+        elseif x >= 8 and x <= 11 and y == 7 then
+          if explorer.active then
+            explorer.enter_phase(x - 7)
           end
-        elseif x == 16 then
-          -- random waveshapes
-          wsa_preset = math.random(0, 7)
-          wsb_preset = math.random(0, 7)
-          params:set("wsa_preset", wsa_preset + 1)
-          params:set("wsb_preset", wsb_preset + 1)
+        -- col 13-16, row 7: randomize actions
+        elseif y == 7 then
+          if x == 13 then
+            config = math.random(0, 11)
+            params:set("config", config + 1)
+          elseif x == 14 then
+            for i = 1, 3 do
+              ratio_idx[i] = math.random(1, #RATIOS)
+              params:set("ratio" .. (i + 1), RATIOS[ratio_idx[i]])
+            end
+          elseif x == 15 then
+            for i = 1, 6 do
+              params:set("index" .. i, math.random() * 1.5)
+            end
+          elseif x == 16 then
+            wsa_preset = math.random(0, 7)
+            wsb_preset = math.random(0, 7)
+            params:set("wsa_preset", wsa_preset + 1)
+            params:set("wsb_preset", wsb_preset + 1)
+          end
+        -- ROW 8, cols 8-15: preset slots (FADERS mode only)
+        elseif y == 8 and x >= 8 and x <= 15 then
+          local slot = x - 7  -- 1-8
+          preset_press_time[slot] = util.time()
         end
+      end
+    end
+
+  else  -- z == 0 (key release)
+    -- keyboard mode note-off
+    if grid_mode == "KEYS" and y >= 5 and y <= 8 then
+      local key = x .. "_" .. y
+      if grid_keys_held[key] then
+        note_off(grid_keys_held[key])
+        grid_keys_held[key] = nil
+      end
+    end
+
+    -- preset slot release (FADERS mode): short=recall, long=save
+    if grid_mode == "FADERS" and y == 8 and x >= 8 and x <= 15 then
+      local slot = x - 7
+      if preset_press_time[slot] then
+        local held = util.time() - preset_press_time[slot]
+        if held > 0.5 then
+          save_preset(slot)
+        else
+          recall_preset(slot)
+        end
+        preset_press_time[slot] = nil
       end
     end
   end
@@ -1348,84 +1619,114 @@ function grid_redraw()
     end
   end
 
-  -- ROWS 5-8: FM index faders (cols 1-6, vertical)
-  for idx = 1, 6 do
-    local val = index_values[idx]
-    -- map 0-1.5 to rows 8 (bottom) to 5 (top)
-    local fill_rows = math.floor(util.linlin(0, 1.5, 0, 4, val) + 0.5)
-    for row = 8, 5, -1 do
-      local row_from_bottom = 8 - row  -- 0,1,2,3
-      if row_from_bottom < fill_rows then
-        g:led(idx, row, 10)
+  if grid_mode == "KEYS" then
+    -- KEYBOARD MODE: rows 5-8 = isomorphic keyboard
+    local root = params:get("bandmate_root")
+    for row = 5, 8 do
+      local octave = 8 - row
+      for col = 1, 16 do
+        local midi_note = root + (octave * 12) + (col - 1)
+        local key = col .. "_" .. row
+        if grid_keys_held[key] then
+          g:led(col, row, 15)  -- held notes bright
+        elseif #scale_lock_scale > 0 then
+          -- check if note is in scale
+          local in_scale = false
+          for _, sn in ipairs(scale_lock_scale) do
+            if sn % 12 == midi_note % 12 then in_scale = true; break end
+          end
+          g:led(col, row, in_scale and 5 or 2)
+        else
+          g:led(col, row, 2)
+        end
+      end
+    end
+  else
+    -- FADER MODE (original)
+    -- ROWS 5-8: FM index faders (cols 1-6, vertical)
+    for idx = 1, 6 do
+      local val = index_values[idx]
+      local fill_rows = math.floor(util.linlin(0, 1.5, 0, 4, val) + 0.5)
+      for row = 8, 5, -1 do
+        local row_from_bottom = 8 - row
+        if row_from_bottom < fill_rows then
+          g:led(idx, row, 10)
+        else
+          g:led(idx, row, 1)
+        end
+      end
+    end
+
+    -- ROW 5, cols 8-16: master index horizontal bar
+    local master_fill = math.floor(util.linlin(0, 2.0, 0, 9, master_index) + 0.5)
+    for x = 8, 16 do
+      local col_from_left = x - 7
+      if col_from_left <= master_fill then
+        g:led(x, 5, 10)
       else
-        g:led(idx, row, 1)
+        g:led(x, 5, 1)
+      end
+    end
+
+    -- ROW 6, cols 8-12: bandmate voice
+    for i = 1, #BANDMATE_VOICES do
+      local x = i + 7
+      local is_current = (BANDMATE_VOICES[i] == bandmate.voice)
+      g:led(x, 6, is_current and 12 or 3)
+    end
+
+    -- ROW 7, cols 8-11: octopus form phase / explorer phase
+    if octopus.active then
+      local form_idx = ({DRIFT=1, BUILD=2, PEAK=3, REST=4})[octopus.form_phase] or 1
+      for i = 1, 4 do
+        g:led(i + 7, 7, i == form_idx and 12 or 3)
+      end
+    elseif explorer.active then
+      for i = 1, 4 do
+        g:led(i + 7, 7, i == explorer.phase and 12 or 3)
+      end
+    else
+      for i = 8, 11 do g:led(i, 7, 1) end
+    end
+
+    -- ROW 7, cols 13-16: randomize buttons
+    for x = 13, 16 do
+      g:led(x, 7, 4)
+    end
+
+    -- ROW 8, cols 8-15: preset slots
+    for i = 1, 8 do
+      local x = i + 7
+      if i == preset_active then
+        g:led(x, 8, 15)  -- recalling: bright
+      elseif presets[i] then
+        g:led(x, 8, 7)   -- saved: medium
+      else
+        g:led(x, 8, 2)   -- empty: dim
+      end
+    end
+
+    -- STATUS METERS (col 15-16, rows 5-7)
+    if octopus.active then
+      g:led(16, 5, 10)
+      g:led(16, 6, 10)
+      g:led(16, 7, 10)
+    elseif explorer.active then
+      local exp_fill = math.floor(explorer.intensity * 3 + 0.5)
+      for row = 7, 5, -1 do
+        g:led(15, row, (7 - row) < exp_fill and 8 or 0)
+      end
+    end
+    if bandmate.active then
+      local bm_fill = math.floor(bandmate.energy * 3 + 0.5)
+      for row = 7, 5, -1 do
+        g:led(16, row, (7 - row) < bm_fill and 8 or 0)
       end
     end
   end
 
-  -- ROW 5, cols 8-16: master index horizontal bar
-  local master_fill = math.floor(util.linlin(0, 2.0, 0, 9, master_index) + 0.5)
-  for x = 8, 16 do
-    local col_from_left = x - 7  -- 1-9
-    if col_from_left <= master_fill then
-      g:led(x, 5, 10)
-    else
-      g:led(x, 5, 1)
-    end
-  end
-
-  -- ROW 6, cols 8-12: bandmate voice
-  for i = 1, #BANDMATE_VOICES do
-    local x = i + 7
-    local is_current = (BANDMATE_VOICES[i] == bandmate.voice)
-    g:led(x, 6, is_current and 12 or 3)
-  end
-
-  -- ROW 7, cols 8-11: octopus form phase / explorer phase
-  if octopus.active then
-    local form_idx = ({DRIFT=1, BUILD=2, PEAK=3, REST=4})[octopus.form_phase] or 1
-    for i = 1, 4 do
-      g:led(i + 7, 7, i == form_idx and 12 or 3)
-    end
-  elseif explorer.active then
-    for i = 1, 4 do
-      g:led(i + 7, 7, i == explorer.phase and 12 or 3)
-    end
-  else
-    for i = 8, 11 do g:led(i, 7, 1) end
-  end
-
-  -- ROW 7, cols 13-16: randomize buttons
-  for x = 13, 16 do
-    g:led(x, 7, 4)
-  end
-
-  -- ROW 8, cols 8-15: octopus tentacle energies (8 bars)
-  if octopus.active then
-    for i = 1, 8 do
-      local e = octopus.get_tentacle_energy(i)
-      g:led(i + 7, 8, math.floor(e * 12) + 1)
-    end
-  end
-
-  -- STATUS METERS (col 15-16, rows 5-7)
-  if octopus.active then
-    -- col 16 rows 5-7: soul indicator (bright = active)
-    g:led(16, 5, 10)
-    g:led(16, 6, 10)
-    g:led(16, 7, 10)
-  elseif explorer.active then
-    local exp_fill = math.floor(explorer.intensity * 3 + 0.5)
-    for row = 7, 5, -1 do
-      g:led(15, row, (7 - row) < exp_fill and 8 or 0)
-    end
-  end
-  if bandmate.active then
-    local bm_fill = math.floor(bandmate.energy * 3 + 0.5)
-    for row = 7, 5, -1 do
-      g:led(16, row, (7 - row) < bm_fill and 8 or 0)
-    end
-  end
+  -- grid mode toggle indicator (col 16, row 8)
+  g:led(16, 8, grid_mode == "KEYS" and 15 or 4)
 
   g:refresh()
 end
@@ -1436,8 +1737,15 @@ end
 
 function cleanup()
   if current_note then note_off(current_note) end
+  -- release all grid keyboard notes
+  for k, note in pairs(grid_keys_held) do
+    note_off(note)
+  end
+  grid_keys_held = {}
   octopus.stop()
   bandmate.stop()
   explorer.stop()
+  softcut.play(1, 0)
+  softcut.rec(1, 0)
   if my_lattice then my_lattice:destroy() end
 end
