@@ -333,11 +333,102 @@ local SOULS = {
     ghost_velocity = 0.25,         -- ghost note velocity
     accent_velocity = 1.0,         -- accent velocity
   },
+
+  -- REICH: Steve Reich — phasing, gradual process, pulsing textures.
+  -- Minimal changes, long form. The octopus barely moves but when it does, SIGNIFICANT.
+  REICH = {
+    name = "REICH",
+    activity = {0.2, 0.3, 0.4, 0.6, 0.7, 1.0, 1.8, 0.1},  -- FORM is hyperactive, rhythm steady
+    topo_drift  = {0, 1, 4},
+    topo_build  = {0, 1, 3},
+    topo_peak   = {0, 1, 2, 3},
+    topo_rest   = {0, 4},
+    index_ceiling = 1.0,
+    ratio_style = "harmonic",    -- pure intervals
+    ws_change_rate = 0.01,       -- almost never changes
+    cutoff_center = 8000,        -- bright, present
+    cutoff_range = 3000,         -- narrow range
+    res_love = 0.2,
+    drive_love = 0.1,
+    density_range = {0.7, 0.95}, -- dense, pulsing
+    ratchet_love = 0.05,
+    condition_variety = 0.1,     -- very regular
+    markov = "melodic",
+    melody_inject_rate = 0.03,   -- barely injects — the PATTERN is the music
+    phaser_love = 0.9,           -- phasing IS the point
+    exciter_love = 0.5,
+    tilt_center = 0.15,
+    form_dramatics = 0.3,        -- very gradual, long arcs
+    silence_love = 0.05,         -- almost never silent
+    chaos_freq = 0.02,
+    chaos_magnitude = 0.2,
+  },
+
+  -- DAVIS: Electric Miles — Bitches Brew, dark star, wah-wah trumpet through effects.
+  -- Space, tension, explosion.
+  DAVIS = {
+    name = "DAVIS",
+    activity = {0.7, 0.8, 1.4, 0.6, 1.0, 1.2, 1.5, 0.5},  -- FILTER and FORM are stars
+    topo_drift  = {0, 1, 4},
+    topo_build  = {0, 2, 3, 5},
+    topo_peak   = {2, 5, 8, 9},
+    topo_rest   = {0, 4, 1},
+    index_ceiling = 1.6,
+    ratio_style = "melodic",
+    ws_change_rate = 0.08,
+    cutoff_center = 5000,        -- mid-focused like a trumpet
+    cutoff_range = 8000,         -- wide wah sweeps
+    res_love = 0.6,              -- resonant, vocal quality
+    drive_love = 0.5,            -- warm distortion
+    density_range = {0.3, 0.7},  -- spacious
+    ratchet_love = 0.08,
+    condition_variety = 0.2,
+    markov = "melodic",
+    melody_inject_rate = 0.15,
+    phaser_love = 0.6,
+    exciter_love = 0.5,
+    tilt_center = 0.0,           -- balanced, not bright
+    form_dramatics = 1.6,        -- very dramatic arcs
+    silence_love = 0.45,         -- silence is part of the music
+    chaos_freq = 0.08,
+    chaos_magnitude = 0.5,
+  },
+
+  -- SUN_RA: cosmic chaos, cluster chords, free rhythm. Space is the place.
+  -- The wildest soul.
+  SUN_RA = {
+    name = "SUN RA",
+    activity = {1.5, 1.4, 1.0, 1.3, 1.2, 1.0, 0.8, 2.0},  -- everything is ON, CHAOS is king
+    topo_drift  = {5, 6, 9, 10, 11},
+    topo_build  = {2, 5, 8, 9, 11, 7},
+    topo_peak   = {9, 8, 7, 11, 5, 2},
+    topo_rest   = {5, 6, 10},
+    index_ceiling = 2.5,          -- EXTREME FM
+    ratio_style = "angular",      -- inharmonic, alien
+    ws_change_rate = 0.25,        -- constant shape shifting
+    cutoff_center = 7000,         -- bright, cosmic
+    cutoff_range = 12000,         -- full range sweeps
+    res_love = 0.7,
+    drive_love = 0.6,
+    density_range = {0.4, 1.0},   -- can go to total density
+    ratchet_love = 0.45,          -- machine gun ratchets
+    condition_variety = 0.7,      -- very irregular
+    markov = "angular",
+    melody_inject_rate = 0.30,    -- constant injection
+    phaser_love = 0.5,
+    exciter_love = 0.6,
+    tilt_center = 0.1,
+    form_dramatics = 1.8,         -- extreme dramatics
+    silence_love = 0.15,
+    chaos_freq = 0.40,            -- VERY chaotic
+    chaos_magnitude = 1.2,        -- EXTREME magnitude
+  },
 }
 
 local SOUL_NAMES = {
   "SUBOTNICK", "OLIVEROS", "BUCHLA", "XENAKIS",
-  "ENO", "COLTRANE", "MILES", "APHEX", "FUNK"
+  "ENO", "COLTRANE", "MILES", "APHEX", "FUNK",
+  "REICH", "DAVIS", "SUN_RA"
 }
 
 -- --------------------------------------------------------------------------
@@ -1369,8 +1460,20 @@ function octopus.act_space(soul)
     nudge("phaser_intensity", rand_delta(0.04) * soul.phaser_love, 0.0, 0.5)
   end
 
-  -- exciter: presence shifts
-  nudge("exciter_amount", rand_delta(mag * 1.5) * soul.exciter_love, 0.0, 0.8)
+  -- exciter: presence shifts — phase-aware riding
+  if octopus.form_phase == "PEAK" then
+    -- push exciter up aggressively during peaks
+    nudge("exciter_amount", math.random() * 0.1 * soul.exciter_love + mag * soul.exciter_love, 0.0, 0.9)
+  elseif octopus.form_phase == "BUILD" then
+    -- gradually raise exciter during build
+    nudge("exciter_amount", math.random() * 0.06 * soul.exciter_love, 0.0, 0.75)
+  elseif octopus.form_phase == "REST" then
+    -- pull exciter down during rest
+    nudge("exciter_amount", -0.05 * soul.exciter_love, 0.0, 0.8)
+  else -- DRIFT
+    -- gentle nudges
+    nudge("exciter_amount", rand_delta(mag * 0.8) * soul.exciter_love, 0.0, 0.6)
+  end
 
   -- tilt: dramatic bright/dark shifts
   local tilt_pull = (soul.tilt_center - params:get("tilt_eq")) * 0.1

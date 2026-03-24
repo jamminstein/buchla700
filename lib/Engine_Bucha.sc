@@ -15,8 +15,8 @@ Engine_Bucha : CroneEngine {
 	var <fxSynth;      // effects chain synth
 	var <fxGroup;      // group for effects
 	var <voiceGroup;   // group for voices
-	var <wsaBufs;      // waveshape A buffer array (8 presets)
-	var <wsbBufs;      // waveshape B buffer array (8 presets)
+	var <wsaBufs;      // waveshape A buffer array (12 presets)
+	var <wsbBufs;      // waveshape B buffer array (12 presets)
 	var <wsaIdx;       // current WSA preset index
 	var <wsbIdx;       // current WSB preset index
 
@@ -59,9 +59,9 @@ Engine_Bucha : CroneEngine {
 		wsbIdx = 0;
 
 		// ---- waveshape buffers ----
-		// 8 presets x 2 (WSA + WSB), 1024 samples each
-		wsaBufs = Array.fill(8, { Buffer.alloc(server, 1024, 1) });
-		wsbBufs = Array.fill(8, { Buffer.alloc(server, 1024, 1) });
+		// 12 presets x 2 (WSA + WSB), 1024 samples each
+		wsaBufs = Array.fill(12, { Buffer.alloc(server, 1024, 1) });
+		wsbBufs = Array.fill(12, { Buffer.alloc(server, 1024, 1) });
 
 		server.sync;
 
@@ -92,19 +92,22 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
+			// analog drift: ±5 cents random per voice
+			var drift = LFNoise1.kr(0.3).range(-0.003, 0.003);
+			var dFreq = freq * (1 + drift);
 			// smooth all FM indices to prevent artifacts on parameter changes
 			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
 			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s0 = SinOsc.ar(dFreq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
 			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 00: symmetric dual-path
-			wsaIn = (SinOsc.ar(freq, s1*idx1) + (s3*idx2)) * idx3;
+			wsaIn = (SinOsc.ar(dFreq, s1*idx1) + (s3*idx2)) * idx3;
 			wsbIn = (SinOsc.ar(freq*ratio3, s1*idx4) + (s3*idx5)) * idx6;
 			// waveshaping: gentle softclip (no tanh — warmer)
 			wsaOut = (wsaIn * 0.9).softclip;
 			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
+			subOsc = SinOsc.ar(dFreq * 0.5) * sub.lag(0.05);
 			// noise layer
 			noiseSig = PinkNoise.ar * noise.lag(0.05);
 			// mix FM + sub + noise
@@ -139,19 +142,22 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
+			// analog drift: ±5 cents random per voice
+			var drift = LFNoise1.kr(0.3).range(-0.003, 0.003);
+			var dFreq = freq * (1 + drift);
 			// smooth all FM indices to prevent artifacts on parameter changes
 			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
 			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s0 = SinOsc.ar(dFreq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
 			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 01: split modulators
-			wsaIn = (SinOsc.ar(freq, s1*idx1) + (s1*idx2)) * idx3;
+			wsaIn = (SinOsc.ar(dFreq, s1*idx1) + (s1*idx2)) * idx3;
 			wsbIn = (SinOsc.ar(freq*ratio3, s3*idx4) + (s3*idx5)) * idx6;
 			// waveshaping: gentle softclip (no tanh — warmer)
 			wsaOut = (wsaIn * 0.9).softclip;
 			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
+			subOsc = SinOsc.ar(dFreq * 0.5) * sub.lag(0.05);
 			// noise layer
 			noiseSig = PinkNoise.ar * noise.lag(0.05);
 			// mix FM + sub + noise
@@ -186,19 +192,22 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
+			// analog drift: ±5 cents random per voice
+			var drift = LFNoise1.kr(0.3).range(-0.003, 0.003);
+			var dFreq = freq * (1 + drift);
 			// smooth all FM indices to prevent artifacts on parameter changes
 			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
 			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s0 = SinOsc.ar(dFreq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
 			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 02: cascaded FM with feedback
-			wsaIn = SinOsc.ar(freq, SinOsc.ar(freq*ratio2, s2*idx2)*idx1) * idx3;
+			wsaIn = SinOsc.ar(dFreq, SinOsc.ar(freq*ratio2, s2*idx2)*idx1) * idx3;
 			wsbIn = SinOsc.ar(freq*ratio3, s3*idx4) * idx6;
 			// waveshaping: gentle softclip (no tanh — warmer)
 			wsaOut = (wsaIn * 0.9).softclip;
 			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
+			subOsc = SinOsc.ar(dFreq * 0.5) * sub.lag(0.05);
 			// noise layer
 			noiseSig = PinkNoise.ar * noise.lag(0.05);
 			// mix FM + sub + noise
@@ -233,19 +242,22 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
+			// analog drift: ±5 cents random per voice
+			var drift = LFNoise1.kr(0.3).range(-0.003, 0.003);
+			var dFreq = freq * (1 + drift);
 			// smooth all FM indices to prevent artifacts on parameter changes
 			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
 			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s0 = SinOsc.ar(dFreq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
 			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 03: shared carrier
-			wsaIn = (s3 + (SinOsc.ar(freq, s2*idx2)*idx1)) * idx3;
+			wsaIn = (s3 + (SinOsc.ar(dFreq, s2*idx2)*idx1)) * idx3;
 			wsbIn = (s3 + (SinOsc.ar(freq*ratio2, s2*idx5)*idx4)) * idx6;
 			// waveshaping: gentle softclip (no tanh — warmer)
 			wsaOut = (wsaIn * 0.9).softclip;
 			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
+			subOsc = SinOsc.ar(dFreq * 0.5) * sub.lag(0.05);
 			// noise layer
 			noiseSig = PinkNoise.ar * noise.lag(0.05);
 			// mix FM + sub + noise
@@ -280,19 +292,22 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
+			// analog drift: ±5 cents random per voice
+			var drift = LFNoise1.kr(0.3).range(-0.003, 0.003);
+			var dFreq = freq * (1 + drift);
 			// smooth all FM indices to prevent artifacts on parameter changes
 			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
 			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s0 = SinOsc.ar(dFreq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
 			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 04: minimal FM + direct envelope
-			wsaIn = SinOsc.ar(freq, SinOsc.ar(freq*ratio2)*idx2) * idx3;
+			wsaIn = SinOsc.ar(dFreq, SinOsc.ar(freq*ratio2)*idx2) * idx3;
 			wsbIn = DC.ar(idx6);
 			// waveshaping: gentle softclip (no tanh — warmer)
 			wsaOut = (wsaIn * 0.9).softclip;
 			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
+			subOsc = SinOsc.ar(dFreq * 0.5) * sub.lag(0.05);
 			// noise layer
 			noiseSig = PinkNoise.ar * noise.lag(0.05);
 			// mix FM + sub + noise
@@ -327,19 +342,22 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
+			// analog drift: ±5 cents random per voice
+			var drift = LFNoise1.kr(0.3).range(-0.003, 0.003);
+			var dFreq = freq * (1 + drift);
 			// smooth all FM indices to prevent artifacts on parameter changes
 			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
 			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s0 = SinOsc.ar(dFreq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
 			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 05: cross-coupled
-			wsaIn = (s1 + (SinOsc.ar(freq, s3*idx2)*idx1)) * idx3;
+			wsaIn = (s1 + (SinOsc.ar(dFreq, s3*idx2)*idx1)) * idx3;
 			wsbIn = (s3 + (SinOsc.ar(freq*ratio3, s1*idx5)*idx4)) * idx6;
 			// waveshaping: gentle softclip (no tanh — warmer)
 			wsaOut = (wsaIn * 0.9).softclip;
 			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
+			subOsc = SinOsc.ar(dFreq * 0.5) * sub.lag(0.05);
 			// noise layer
 			noiseSig = PinkNoise.ar * noise.lag(0.05);
 			// mix FM + sub + noise
@@ -374,19 +392,22 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
+			// analog drift: ±5 cents random per voice
+			var drift = LFNoise1.kr(0.3).range(-0.003, 0.003);
+			var dFreq = freq * (1 + drift);
 			// smooth all FM indices to prevent artifacts on parameter changes
 			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
 			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s0 = SinOsc.ar(dFreq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
 			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 06: three-osc cascade
-			wsaIn = SinOsc.ar(freq, (SinOsc.ar(freq*ratio2, s2*idx1)*idx2) + (s3*idx4)) * idx3;
+			wsaIn = SinOsc.ar(dFreq, (SinOsc.ar(freq*ratio2, s2*idx1)*idx2) + (s3*idx4)) * idx3;
 			wsbIn = wsaIn * (idx6/idx3.max(0.001));
 			// waveshaping: gentle softclip (no tanh — warmer)
 			wsaOut = (wsaIn * 0.9).softclip;
 			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
+			subOsc = SinOsc.ar(dFreq * 0.5) * sub.lag(0.05);
 			// noise layer
 			noiseSig = PinkNoise.ar * noise.lag(0.05);
 			// mix FM + sub + noise
@@ -421,19 +442,22 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
+			// analog drift: ±5 cents random per voice
+			var drift = LFNoise1.kr(0.3).range(-0.003, 0.003);
+			var dFreq = freq * (1 + drift);
 			// smooth all FM indices to prevent artifacts on parameter changes
 			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
 			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s0 = SinOsc.ar(dFreq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
 			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 07: osc4-centric
-			wsaIn = SinOsc.ar(freq, s3*idx4) * idx3;
+			wsaIn = SinOsc.ar(dFreq, s3*idx4) * idx3;
 			wsbIn = (s3 + (s3*idx5)) * idx6;
 			// waveshaping: gentle softclip (no tanh — warmer)
 			wsaOut = (wsaIn * 0.9).softclip;
 			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
+			subOsc = SinOsc.ar(dFreq * 0.5) * sub.lag(0.05);
 			// noise layer
 			noiseSig = PinkNoise.ar * noise.lag(0.05);
 			// mix FM + sub + noise
@@ -468,19 +492,22 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
+			// analog drift: ±5 cents random per voice
+			var drift = LFNoise1.kr(0.3).range(-0.003, 0.003);
+			var dFreq = freq * (1 + drift);
 			// smooth all FM indices to prevent artifacts on parameter changes
 			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
 			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s0 = SinOsc.ar(dFreq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
 			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 08: dual-path with feedback
-			wsaIn = (SinOsc.ar(freq, SinOsc.ar(freq*ratio2)*idx2) + (s2*idx1)) * idx3;
+			wsaIn = (SinOsc.ar(dFreq, SinOsc.ar(freq*ratio2)*idx2) + (s2*idx1)) * idx3;
 			wsbIn = (s3 + (s0*idx5)) * idx6;
 			// waveshaping: gentle softclip (no tanh — warmer)
 			wsaOut = (wsaIn * 0.9).softclip;
 			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
+			subOsc = SinOsc.ar(dFreq * 0.5) * sub.lag(0.05);
 			// noise layer
 			noiseSig = PinkNoise.ar * noise.lag(0.05);
 			// mix FM + sub + noise
@@ -515,19 +542,22 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
+			// analog drift: ±5 cents random per voice
+			var drift = LFNoise1.kr(0.3).range(-0.003, 0.003);
+			var dFreq = freq * (1 + drift);
 			// smooth all FM indices to prevent artifacts on parameter changes
 			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
 			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s0 = SinOsc.ar(dFreq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
 			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 09: circular feedback (chaos)
-			wsaIn = SinOsc.ar(freq, s3*idx1) * idx3;
+			wsaIn = SinOsc.ar(dFreq, s3*idx1) * idx3;
 			wsbIn = SinOsc.ar(freq*ratio3, s1*idx4) * idx6;
 			// waveshaping: gentle softclip (no tanh — warmer)
 			wsaOut = (wsaIn * 0.9).softclip;
 			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
+			subOsc = SinOsc.ar(dFreq * 0.5) * sub.lag(0.05);
 			// noise layer
 			noiseSig = PinkNoise.ar * noise.lag(0.05);
 			// mix FM + sub + noise
@@ -562,19 +592,22 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
+			// analog drift: ±5 cents random per voice
+			var drift = LFNoise1.kr(0.3).range(-0.003, 0.003);
+			var dFreq = freq * (1 + drift);
 			// smooth all FM indices to prevent artifacts on parameter changes
 			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
 			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s0 = SinOsc.ar(dFreq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
 			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 10: shared modulator
-			wsaIn = (SinOsc.ar(freq, s1*idx2) + (s2*idx1)) * idx3;
+			wsaIn = (SinOsc.ar(dFreq, s1*idx2) + (s2*idx1)) * idx3;
 			wsbIn = (SinOsc.ar(freq*ratio3, s1*idx5) + (s0*idx4)) * idx6;
 			// waveshaping: gentle softclip (no tanh — warmer)
 			wsaOut = (wsaIn * 0.9).softclip;
 			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
+			subOsc = SinOsc.ar(dFreq * 0.5) * sub.lag(0.05);
 			// noise layer
 			noiseSig = PinkNoise.ar * noise.lag(0.05);
 			// mix FM + sub + noise
@@ -609,19 +642,22 @@ Engine_Bucha : CroneEngine {
 			sub=0.0, lfo_filter=0.0, lfo_filter_rate=2.0,
 			wsaBuf, wsbBuf, pan=0;
 			var s0,s1,s2,s3,wsaIn,wsbIn,wsaOut,wsbOut,mixed,filtered,sig,env,subOsc,noiseSig,tremLfo,filterLfo;
+			// analog drift: ±5 cents random per voice
+			var drift = LFNoise1.kr(0.3).range(-0.003, 0.003);
+			var dFreq = freq * (1 + drift);
 			// smooth all FM indices to prevent artifacts on parameter changes
 			idx1=idx1.lag(0.05); idx2=idx2.lag(0.05); idx3=idx3.lag(0.05);
 			idx4=idx4.lag(0.05); idx5=idx5.lag(0.05); idx6=idx6.lag(0.05);
-			s0 = SinOsc.ar(freq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
+			s0 = SinOsc.ar(dFreq); s1 = SinOsc.ar(freq*ratio2.lag(0.08));
 			s2 = SinOsc.ar(freq*ratio3.lag(0.08)); s3 = SinOsc.ar(freq*ratio4.lag(0.08));
 			// config 11: multi-output
-			wsaIn = (SinOsc.ar(freq, SinOsc.ar(freq*ratio3)*idx5) + (s0*idx1) + (s3*idx4)) * idx3;
-			wsbIn = (SinOsc.ar(freq, SinOsc.ar(freq*ratio3)*idx5) + (s1*idx2)) * idx6;
+			wsaIn = (SinOsc.ar(dFreq, SinOsc.ar(freq*ratio3)*idx5) + (s0*idx1) + (s3*idx4)) * idx3;
+			wsbIn = (SinOsc.ar(dFreq, SinOsc.ar(freq*ratio3)*idx5) + (s1*idx2)) * idx6;
 			// waveshaping: gentle softclip (no tanh — warmer)
 			wsaOut = (wsaIn * 0.9).softclip;
 			wsbOut = (wsbIn * 0.9).softclip;
 			// sub oscillator (one octave below)
-			subOsc = SinOsc.ar(freq * 0.5) * sub.lag(0.05);
+			subOsc = SinOsc.ar(dFreq * 0.5) * sub.lag(0.05);
 			// noise layer
 			noiseSig = PinkNoise.ar * noise.lag(0.05);
 			// mix FM + sub + noise
@@ -737,6 +773,8 @@ Engine_Bucha : CroneEngine {
 			var excAmt;
 			// multiband compressor vars
 			var mbLoL, mbLoR, mbMidL, mbMidR, mbHiL, mbHiR;
+			// parallel compression vars
+			var compL, compR, compSig;
 
 			sig = In.ar(in, 2);
 			// mix in external audio input
@@ -808,6 +846,10 @@ Engine_Bucha : CroneEngine {
 			right = BLowShelf.ar(right, 300, 1, 3 + (tilt.lag(0.05).neg * 3));
 			right = BHiShelf.ar(right, 3000, 1, tilt.lag(0.05) * 5);
 
+			// ---- PRESENCE PEAK: +3dB at 3kHz for forwardness ----
+			left = MidEQ.ar(left, 3000, 0.7, 3);
+			right = MidEQ.ar(right, 3000, 0.7, 3);
+
 			// ---- STEREO DELAY ----
 			delL = CombC.ar(left, 1.0, delayTime.lag(0.05).clip(0.01, 1.0), delayFeedback.lag(0.03).clip(0, 0.8) * 2.5);
 			delR = CombC.ar(right, 1.0, (delayTime.lag(0.05) * 0.75).clip(0.01, 1.0), delayFeedback.lag(0.03).clip(0, 0.8) * 2.5);
@@ -829,6 +871,21 @@ Engine_Bucha : CroneEngine {
 			revSig = FreeVerb2.ar(left, right, reverbMix.lag(0.05), reverbSize.lag(0.05), reverbDamp.lag(0.05));
 			left = revSig[0];
 			right = revSig[1];
+
+			// ---- PARALLEL COMPRESSION (NY compression) ----
+			// heavily compress a copy, mix it back for "in your face" presence
+			compSig = Compander.ar([left, right], [left, right],
+				thresh: 0.15,      // low threshold catches everything
+				slopeBelow: 1.0,   // no expansion
+				slopeAbove: 0.3,   // heavy compression (3.3:1 ratio)
+				clampTime: 0.002,  // fast attack
+				relaxTime: 0.08    // medium release
+			);
+			compL = compSig[0];
+			compR = compSig[1];
+			// mix compressed signal back (30% compressed + 70% dry = forward but not squashed)
+			left = (left * 0.7) + (compL * 0.3);
+			right = (right * 0.7) + (compR * 0.3);
 
 			// ---- FINAL: soft saturation + brick wall ----
 			left = (left * 0.9).softclip;
@@ -877,6 +934,72 @@ Engine_Bucha : CroneEngine {
 			});
 
 			// select SynthDef by config (b700v00 through b700v11)
+			synthName = [\b700v00, \b700v01, \b700v02, \b700v03,
+				\b700v04, \b700v05, \b700v06, \b700v07,
+				\b700v08, \b700v09, \b700v10, \b700v11
+			][params[\config].asInteger.clip(0,11)];
+
+			voices[note] = Synth(synthName, [
+				\out, fxBus,
+				\freq, freq,
+				\vel, vel,
+				\gate, 1,
+				\ratio2, params[\ratio2],
+				\ratio3, params[\ratio3],
+				\ratio4, params[\ratio4],
+				\idx1, (params[\index1] * params[\masterIndex]).clip(0, 3.5),
+				\idx2, (params[\index2] * params[\masterIndex]).clip(0, 3.5),
+				\idx3, (params[\index3] * params[\masterIndex]).clip(0, 3.5),
+				\idx4, (params[\index4] * params[\masterIndex]).clip(0, 3.5),
+				\idx5, (params[\index5] * params[\masterIndex]).clip(0, 3.5),
+				\idx6, (params[\index6] * params[\masterIndex]).clip(0, 3.5),
+				\cutoff, params[\cutoff],
+				\resonance, params[\resonance],
+				\drive, params[\drive],
+				\atk, params[\atk] ? 0.005,
+				\dec, params[\dec] ? 0.2,
+				\sus, params[\sus] ? 0.8,
+				\rel, params[\rel] ? 0.3,
+				\noise, params[\noise] ? 0.0,
+				\sub, params[\sub] ? 0.0,
+				\trem_rate, params[\tremRate] ? 0.0,
+				\trem_depth, params[\tremDepth] ? 0.0,
+				\lfo_filter, params[\lfoFilter] ? 0.0,
+				\lfo_filter_rate, params[\lfoFilterRate] ? 2.0,
+				\amp, params[\amp] ? 1.0,
+				\wsaBuf, wsaBufs[params[\wsaPreset].asInteger],
+				\wsbBuf, wsbBufs[params[\wsbPreset].asInteger]
+			], voiceGroup);
+
+			voiceOrder.add(note);
+		});
+
+		// note_on_hz: like note_on but accepts a pre-tuned frequency (for microtuning)
+		// format: note (int for voice key), freq (float Hz), vel (float)
+		this.addCommand("note_on_hz", "iff", { arg msg;
+			var note = msg[1].asInteger;
+			var freq = msg[2].asFloat;
+			var vel = msg[3].asFloat;
+			var synthName;
+
+			// kill existing voice on same note (quick fade to avoid click)
+			if (voices[note].notNil) {
+				var old = voices[note];
+				old.set(\gate, 0, \rel, 0.008);
+				voices[note] = nil;
+				voiceOrder.remove(note);
+			};
+
+			// voice stealing: if at max, kill oldest voice
+			while ({voices.size >= maxVoices}, {
+				var oldest = voiceOrder.removeAt(0);
+				if (oldest.notNil and: {voices[oldest].notNil}) {
+					voices[oldest].set(\gate, 0, \rel, 0.008);
+					voices[oldest] = nil;
+				};
+			});
+
+			// select SynthDef by config
 			synthName = [\b700v00, \b700v01, \b700v02, \b700v03,
 				\b700v04, \b700v05, \b700v06, \b700v07,
 				\b700v08, \b700v09, \b700v10, \b700v11
@@ -1009,14 +1132,14 @@ Engine_Bucha : CroneEngine {
 		});
 
 		this.addCommand("wsa", "i", { arg msg;
-			var idx = msg[1].asInteger.clip(0, 7);
+			var idx = msg[1].asInteger.clip(0, 11);
 			params[\wsaPreset] = idx;
 			wsaIdx = idx;
 			// waveshape buffer swap requires new notes to pick up
 		});
 
 		this.addCommand("wsb", "i", { arg msg;
-			var idx = msg[1].asInteger.clip(0, 7);
+			var idx = msg[1].asInteger.clip(0, 11);
 			params[\wsbPreset] = idx;
 			wsbIdx = idx;
 		});
@@ -1170,7 +1293,8 @@ Engine_Bucha : CroneEngine {
 	}
 
 	fillWaveshapePresets { arg bufs;
-		// all use cheby() which handles wavetable format correctly
+		// presets 0-7 use cheby() for chebyshev polynomial waveshaping
+		// presets 8-11 use loadCollection for custom transfer functions
 
 		// preset 0: linear (pass-through) — 1st chebyshev = identity
 		bufs[0].cheby([1.0]);
@@ -1195,6 +1319,33 @@ Engine_Bucha : CroneEngine {
 
 		// preset 7: chebyshev 3rd harmonic emphasis
 		bufs[7].cheby([0.0, 0.0, 1.0]);
+
+		// preset 8: RECTIFIER — full-wave rectification: abs(x)*2-1
+		bufs[8].loadCollection(
+			(1024).collect({ arg i;
+				var x = (i / 511.5) - 1.0;
+				x.abs * 2 - 1;
+			})
+		);
+
+		// preset 9: BITCRUSH — quantize to 4 levels
+		bufs[9].loadCollection(
+			(1024).collect({ arg i;
+				var x = (i / 511.5) - 1.0;
+				(x * 2).round(0.5) * 0.5;
+			})
+		);
+
+		// preset 10: RING MOD shape — sin(x * pi * 3) three-cycle sine
+		bufs[10].loadCollection(
+			(1024).collect({ arg i;
+				var x = (i / 511.5) - 1.0;
+				sin(x * pi * 3);
+			})
+		);
+
+		// preset 11: CHEBYSHEV 7th — 64x^7 - 112x^5 + 56x^3 - 7x
+		bufs[11].cheby([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]);
 	}
 
 	free {

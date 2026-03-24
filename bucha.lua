@@ -55,15 +55,38 @@ local CONFIG_NAMES = {
 
 -- waveshape preset names
 local WS_NAMES = {
-  [0] = "LINEAR",
-  [1] = "SOFT",
-  [2] = "HARD",
-  [3] = "FOLD",
-  [4] = "SINEFOLD",
-  [5] = "ASYM",
-  [6] = "STAIR",
-  [7] = "CHEBY3"
+  [0]  = "LINEAR",
+  [1]  = "SOFT",
+  [2]  = "HARD",
+  [3]  = "FOLD",
+  [4]  = "SINEFOLD",
+  [5]  = "ASYM",
+  [6]  = "STAIR",
+  [7]  = "CHEBY3",
+  [8]  = "RECTIFY",
+  [9]  = "BITCRUSH",
+  [10] = "RINGMOD",
+  [11] = "CHEBY7"
 }
+
+-- Microtuning tables: cents offset from 12TET for each pitch class (0-11)
+local TUNINGS = {
+  { name = "12TET",    offsets = {0,0,0,0,0,0,0,0,0,0,0,0} },
+  { name = "JUST",     offsets = {0, -10, 4, 16, -14, -2, -10, 2, 14, -16, -4, -12} },
+  { name = "PYTHAG",   offsets = {0, -10, 4, -6, 8, -2, -12, 2, -8, 6, -4, 10} },
+  { name = "CARLOS A", offsets = {0, 22, 44, 66, 88, 110, 132, 154, 176, 198, 220, 242} },
+  { name = "CARLOS B", offsets = {0, 19, 38, 57, 76, 95, 114, 133, 152, 171, 190, 209} },
+  { name = "HARMONIC", offsets = {0, -12, 4, -31, -14, 2, -31, 2, -12, 4, -31, -49} },
+  { name = "GAMELAN",  offsets = {0, 0, -20, 0, 0, 15, 0, -10, 0, 0, 20, 0} },
+}
+
+local function tuned_freq(note)
+  local tuning = TUNINGS[params:get("tuning_system")]
+  local pc = note % 12  -- pitch class 0-11
+  local cents_offset = tuning.offsets[pc + 1]
+  local base_freq = 440 * (2 ^ ((note - 69) / 12))
+  return base_freq * (2 ^ (cents_offset / 1200))
+end
 
 -- harmonic ratios for easy selection
 local RATIOS = {0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 7.0, 8.0}
@@ -557,7 +580,8 @@ function init()
   -- WAVESHAPE
   params:add_group("WAVESHAPE", 2)
   params:add_option("wsa_preset", "waveshape A", {
-    "LINEAR", "SOFT", "HARD", "FOLD", "SINEFOLD", "ASYM", "STAIR", "CHEBY3"
+    "LINEAR", "SOFT", "HARD", "FOLD", "SINEFOLD", "ASYM", "STAIR", "CHEBY3",
+    "RECTIFY", "BITCRUSH", "RINGMOD", "CHEBY7"
   }, 1)
   params:set_action("wsa_preset", function(v)
     wsa_preset = v - 1
@@ -566,13 +590,19 @@ function init()
   end)
 
   params:add_option("wsb_preset", "waveshape B", {
-    "LINEAR", "SOFT", "HARD", "FOLD", "SINEFOLD", "ASYM", "STAIR", "CHEBY3"
+    "LINEAR", "SOFT", "HARD", "FOLD", "SINEFOLD", "ASYM", "STAIR", "CHEBY3",
+    "RECTIFY", "BITCRUSH", "RINGMOD", "CHEBY7"
   }, 1)
   params:set_action("wsb_preset", function(v)
     wsb_preset = v - 1
     engine.wsb(wsb_preset)
     screen_dirty = true
   end)
+
+  -- TUNING
+  params:add_group("TUNING", 1)
+  params:add_option("tuning_system", "tuning",
+    {"12TET", "JUST", "PYTHAG", "CARLOS A", "CARLOS B", "HARMONIC", "GAMELAN"}, 1)
 
   -- FILTER
   params:add_group("FILTER", 3)
@@ -1110,6 +1140,9 @@ function note_on(note, vel, pan_override)
   local inversion = params:get("chord_inversion")
   chord_mode_override = nil  -- consume the override
 
+  -- microtuning: use note_on_hz when not 12TET
+  local use_hz = params:get("tuning_system") > 1
+
   if chord_mode > 1 then
     -- chord mode: build and play all chord notes
     local notes = build_chord(note, chord_mode, inversion)
@@ -1120,13 +1153,21 @@ function note_on(note, vel, pan_override)
       -- slight velocity reduction for upper voices (voice leading)
       local v = (i == 1) and vel or vel * (0.85 - (i - 2) * 0.05)
       v = math.max(0.2, v)
-      engine.note_on(n, v)
+      if use_hz then
+        engine.note_on_hz(n, tuned_freq(n), v)
+      else
+        engine.note_on(n, v)
+      end
       if pan_override then engine.pan(n, pan_override) end
       midi_out_device:note_on(n, math.floor(v * 127), ch)
     end
   else
-    -- single note mode (original)
-    engine.note_on(note, vel)
+    -- single note mode
+    if use_hz then
+      engine.note_on_hz(note, tuned_freq(note), vel)
+    else
+      engine.note_on(note, vel)
+    end
     if pan_override then engine.pan(note, pan_override) end
     local ch = params:get("midi_out_ch")
     midi_out_device:note_on(note, math.floor(vel * 127), ch)
@@ -1282,10 +1323,10 @@ function enc(n, d)
     end
   elseif page == 3 then
     if n == 2 then
-      wsa_preset = util.clamp(wsa_preset + d, 0, 7)
+      wsa_preset = util.clamp(wsa_preset + d, 0, 11)
       params:set("wsa_preset", wsa_preset + 1)
     elseif n == 3 then
-      wsb_preset = util.clamp(wsb_preset + d, 0, 7)
+      wsb_preset = util.clamp(wsb_preset + d, 0, 11)
       params:set("wsb_preset", wsb_preset + 1)
     end
   elseif page == 4 then
@@ -1382,8 +1423,8 @@ function key(n, z)
             params:set("ratio" .. (i + 1), RATIOS[ratio_idx[i]])
           end
         elseif page == 3 then
-          wsa_preset = math.random(0, 7)
-          wsb_preset = math.random(0, 7)
+          wsa_preset = math.random(0, 11)
+          wsb_preset = math.random(0, 11)
           params:set("wsa_preset", wsa_preset + 1)
           params:set("wsb_preset", wsb_preset + 1)
         elseif page == 4 then
@@ -1609,6 +1650,14 @@ function waveshape_approx(x, preset)
     return (x * x * sign * 0.8) + (x * 0.5)
   elseif preset == 6 then return math.floor(x * 6 + 0.5) / 6
   elseif preset == 7 then return 4 * x * x * x - 3 * x
+  elseif preset == 8 then return math.abs(x)  -- RECTIFY
+  elseif preset == 9 then  -- BITCRUSH (4-bit approximation)
+    local bits = 4
+    local q = 2 / (2^bits - 1)
+    return math.floor(x / q + 0.5) * q
+  elseif preset == 10 then return math.sin(x * math.pi * 2) * 0.7  -- RINGMOD approximation
+  elseif preset == 11 then  -- CHEBY7 (7th-order Chebyshev approximation)
+    return 64 * x^7 - 112 * x^5 + 56 * x^3 - 7 * x
   end
   return x
 end
@@ -2012,8 +2061,8 @@ function grid_key(x, y, z)
               params:set("index" .. i, math.random() * 1.5)
             end
           elseif x == 16 then
-            wsa_preset = math.random(0, 7)
-            wsb_preset = math.random(0, 7)
+            wsa_preset = math.random(0, 11)
+            wsb_preset = math.random(0, 11)
             params:set("wsa_preset", wsa_preset + 1)
             params:set("wsb_preset", wsb_preset + 1)
           end
