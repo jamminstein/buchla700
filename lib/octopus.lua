@@ -700,6 +700,76 @@ end
 -- 2. SPECTRUM: rides indices, ratios, waveshapes
 function octopus.act_spectrum(soul)
   local t = octopus.tentacles[T_SPECTRUM]
+
+  -- FUNK: timbral variation — not organ, ALIVE
+  if soul.is_funk then
+    local mag = t.energy * 0.1
+
+    -- envelope variation: short stabs vs medium groove vs occasional legato
+    if math.random() < 0.25 then
+      local roll = math.random()
+      if roll < 0.4 then
+        -- tight stab
+        params:set("attack", 0.001)
+        params:set("decay", 0.05 + math.random() * 0.1)
+        params:set("sustain_level", 0.1 + math.random() * 0.2)
+        params:set("release", 0.03 + math.random() * 0.05)
+      elseif roll < 0.75 then
+        -- medium groove
+        params:set("attack", 0.001 + math.random() * 0.01)
+        params:set("decay", 0.1 + math.random() * 0.2)
+        params:set("sustain_level", 0.2 + math.random() * 0.3)
+        params:set("release", 0.05 + math.random() * 0.1)
+      else
+        -- occasional legato
+        params:set("attack", 0.01 + math.random() * 0.05)
+        params:set("decay", 0.3 + math.random() * 0.3)
+        params:set("sustain_level", 0.5 + math.random() * 0.3)
+        params:set("release", 0.2 + math.random() * 0.3)
+      end
+    end
+
+    -- gate length variation on sequencer steps
+    if math.random() < 0.3 then
+      local seq = octopus.seq
+      local len = seq.track_len[seq.TRACK_MELODY]
+      for i = 1, len do
+        local step = seq.melody[i]
+        if step then
+          if step.vel < 0.4 then
+            step.gate = 0.1 + math.random() * 0.1  -- ghost = very short
+          elseif step.vel > 0.7 then
+            step.gate = 0.3 + math.random() * 0.2  -- accent = medium
+          else
+            step.gate = math.random() < 0.2 and 0.7 or 0.2  -- occasional legato
+          end
+        end
+      end
+    end
+
+    -- drive variation: gritty vs clean
+    if math.random() < 0.2 then
+      nudge("drive", rand_delta(0.06), 0.0, 0.35)
+    end
+
+    -- sub + noise during PEAK
+    if octopus.form_phase == "PEAK" then
+      nudge("sub_osc", rand_delta(0.03), 0.1, 0.4)
+      nudge("noise", rand_delta(0.01), 0.0, 0.06)
+    end
+
+    -- cutoff variation: wah-like movement
+    nudge("cutoff", rand_delta(300 * t.energy), 600, 5000)
+
+    -- topology: occasionally switch between warm configs
+    if math.random() < 0.08 then
+      local warm_configs = {0, 1, 3, 4}
+      params:set("config", warm_configs[math.random(#warm_configs)] + 1)
+    end
+
+    return
+  end
+
   local mag = t.energy * 0.08
 
   -- indices

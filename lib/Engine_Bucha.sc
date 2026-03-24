@@ -8,6 +8,8 @@
 
 Engine_Bucha : CroneEngine {
 	var <voices;       // Dictionary of active voice synths
+	var <voiceOrder;   // Array tracking voice creation order for stealing
+	var <maxVoices;    // max simultaneous voices (CPU protection)
 	var <params;       // global parameter state
 	var <fxBus;        // effects send bus
 	var <fxSynth;      // effects chain synth
@@ -26,6 +28,8 @@ Engine_Bucha : CroneEngine {
 		var server = context.server;
 
 		voices = Dictionary.new;
+		voiceOrder = List.new;
+		maxVoices = 6;
 		params = Dictionary.new;
 
 		// defaults
@@ -785,9 +789,19 @@ Engine_Bucha : CroneEngine {
 			// kill existing voice on same note (quick fade to avoid click)
 			if (voices[note].notNil) {
 				var old = voices[note];
-				old.set(\gate, 0, \rel, 0.008);  // 8ms release = no click
+				old.set(\gate, 0, \rel, 0.008);
 				voices[note] = nil;
+				voiceOrder.remove(note);
 			};
+
+			// voice stealing: if at max, kill oldest voice
+			while ({voices.size >= maxVoices}, {
+				var oldest = voiceOrder.removeAt(0);
+				if (oldest.notNil and: {voices[oldest].notNil}) {
+					voices[oldest].set(\gate, 0, \rel, 0.008);
+					voices[oldest] = nil;
+				};
+			});
 
 			// select SynthDef by config (b700v00 through b700v11)
 			synthName = [\b700v00, \b700v01, \b700v02, \b700v03,
@@ -826,6 +840,8 @@ Engine_Bucha : CroneEngine {
 				\wsaBuf, wsaBufs[params[\wsaPreset].asInteger],
 				\wsbBuf, wsbBufs[params[\wsbPreset].asInteger]
 			], voiceGroup);
+
+			voiceOrder.add(note);
 		});
 
 		this.addCommand("note_off", "i", { arg msg;
@@ -833,7 +849,12 @@ Engine_Bucha : CroneEngine {
 			if (voices[note].notNil) {
 				voices[note].set(\gate, 0);
 				voices[note] = nil;
+				voiceOrder.remove(note);
 			};
+		});
+
+		this.addCommand("max_voices", "i", { arg msg;
+			maxVoices = msg[1].asInteger.clip(2, 12);
 		});
 
 		this.addCommand("config", "i", { arg msg;

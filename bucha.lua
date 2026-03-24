@@ -95,6 +95,10 @@ local k3_press_time = 0
 local midi_in_device
 local midi_out_device
 local current_note = nil
+local max_voices = 6
+
+-- CC out: track last sent values to avoid flooding
+local last_cc = {}
 
 -- lattice
 local my_lattice
@@ -102,6 +106,7 @@ local seq_sprocket
 local explorer_sprocket
 local bandmate_sprocket
 local octopus_sprocket
+local midi_clock_sprocket
 
 -- grid
 local g = grid.connect()
@@ -680,12 +685,20 @@ function init()
   end)
 
   -- MIDI
-  params:add_group("MIDI", 5)
+  params:add_group("MIDI", 9)
   params:add_number("midi_in_ch", "midi in ch", 1, 16, 1)
   params:add_number("midi_out_ch", "midi out ch", 1, 16, 1)
   params:add_number("midi_out_device", "midi out device", 1, 16, 2)
   params:add_option("cc_out_enabled", "CC out", {"off", "on"}, 1)
   params:add_number("cc_out_channel", "CC out ch", 1, 16, 1)
+  params:add_option("midi_clock_out", "MIDI clock out", {"off", "on"}, 1)
+  params:add_option("midi_transport", "MIDI transport", {"off", "on"}, 1)
+  params:add_option("midi_plock_cc", "p-lock CC out", {"off", "on"}, 1)
+  params:add_number("max_voices", "max voices", 2, 8, 6)
+  params:set_action("max_voices", function(v)
+    max_voices = v
+    engine.max_voices(v)
+  end)
 
   -- SCALE LOCK
   params:add_group("SCALE LOCK", 2)
@@ -817,26 +830,61 @@ function init()
     action = function(t)
       octopus.tick()
       -- CC output: send tentacle energies + key params as CC
-      if params:get("cc_out_enabled") == 2 and octopus.active then
+      if params:get("cc_out_enabled") == 2 and octopus.active and midi_out_device then
         local cc_ch = params:get("cc_out_channel")
+        -- helper: only send if value changed by more than 1
+        local function send_cc(num, val)
+          local v = util.clamp(math.floor(val), 0, 127)
+          if not last_cc[num] or math.abs(v - last_cc[num]) > 1 then
+            midi_out_device:cc(num, v, cc_ch)
+            last_cc[num] = v
+          end
+        end
         -- tentacle energies -> CC 20-27
         for i = 1, 8 do
           local e = octopus.get_tentacle_energy(i)
-          midi_out_device:cc(19 + i, math.floor(e * 127), cc_ch)
+          send_cc(19 + i, e * 127)
         end
         -- cutoff -> CC 74
-        local cut_cc = math.floor(util.linlin(20, 18000, 0, 127, params:get("cutoff")))
-        midi_out_device:cc(74, util.clamp(cut_cc, 0, 127), cc_ch)
+        send_cc(74, util.linlin(20, 18000, 0, 127, params:get("cutoff")))
         -- resonance -> CC 71
-        local res_cc = math.floor(util.linlin(0, 3.5, 0, 127, params:get("resonance")))
-        midi_out_device:cc(71, util.clamp(res_cc, 0, 127), cc_ch)
+        send_cc(71, util.linlin(0, 3.5, 0, 127, params:get("resonance")))
         -- master_index -> CC 1
-        local idx_cc = math.floor(util.linlin(0, 1.5, 0, 127, params:get("master_index")))
-        midi_out_device:cc(1, util.clamp(idx_cc, 0, 127), cc_ch)
+        send_cc(1, util.linlin(0, 1.5, 0, 127, params:get("master_index")))
+        -- drive -> CC 16
+        send_cc(16, util.linlin(0, 1, 0, 127, params:get("drive")))
+        -- attack -> CC 73
+        send_cc(73, util.linlin(0.001, 2, 0, 127, params:get("attack")))
+        -- decay -> CC 75
+        send_cc(75, util.linlin(0.01, 4, 0, 127, params:get("decay")))
+        -- delay_mix -> CC 12
+        send_cc(12, util.linlin(0, 1, 0, 127, params:get("delay_mix")))
+        -- reverb_mix -> CC 91
+        send_cc(91, util.linlin(0, 1, 0, 127, params:get("reverb_mix")))
+        -- phaser_intensity -> CC 93
+        send_cc(93, util.linlin(0, 1, 0, 127, params:get("phaser_intensity")))
+        -- noise -> CC 15
+        send_cc(15, util.linlin(0, 0.5, 0, 127, params:get("noise")))
+        -- sub_osc -> CC 17
+        send_cc(17, util.linlin(0, 0.5, 0, 127, params:get("sub_osc")))
+        -- tilt_eq -> CC 18
+        send_cc(18, util.linlin(-1, 1, 0, 127, params:get("tilt_eq")))
+        -- lfo_filter -> CC 19
+        send_cc(19, util.linlin(0, 1, 0, 127, params:get("lfo_filter")))
       end
       grid_dirty = true
     end,
     division = 1/16,  -- 16th notes — the octopus moves FAST
+    enabled = true
+  }
+
+  midi_clock_sprocket = my_lattice:new_sprocket{
+    action = function(t)
+      if params:get("midi_clock_out") == 2 and midi_out_device then
+        midi_out_device:clock()
+      end
+    end,
+    division = 1/96,  -- 24ppqn: 24 clocks per quarter note = 96 per whole note
     enabled = true
   }
 
@@ -856,6 +904,22 @@ function init()
       clock.sleep(1/15)
       anim_phase = anim_phase + 0.05
       if anim_phase > 2 * math.pi then anim_phase = anim_phase - 2 * math.pi end
+      -- CPU protection: throttle octopus speed if CPU is high
+      if norns.cpu > 65 then
+        local current_speed = params:get("octopus_speed")
+        if current_speed > 2 then
+          -- temporarily reduce to "normal" (index 2)
+          local divs = {1/4, 1/8, 1/16, 1/32}
+          if octopus_sprocket then octopus_sprocket:set_division(divs[2]) end
+          if bandmate_sprocket then bandmate_sprocket:set_division(divs[2]) end
+        end
+      else
+        -- restore speed from param
+        local current_speed = params:get("octopus_speed")
+        local divs = {1/4, 1/8, 1/16, 1/32}
+        if octopus_sprocket then octopus_sprocket:set_division(divs[current_speed]) end
+        if bandmate_sprocket then bandmate_sprocket:set_division(divs[current_speed]) end
+      end
       screen_dirty = true
       redraw()
       if grid_dirty then
@@ -974,6 +1038,23 @@ function seq_step()
       if plocks.drive then engine.drive(plocks.drive) end
       if plocks.resonance then engine.resonance(plocks.resonance) end
 
+      -- p-lock CC out
+      if params:get("midi_plock_cc") == 2 and midi_out_device then
+        local cc_ch = params:get("cc_out_channel")
+        if plocks.cutoff then
+          midi_out_device:cc(74, util.clamp(math.floor(util.linlin(20, 18000, 0, 127, plocks.cutoff)), 0, 127), cc_ch)
+        end
+        if plocks.master_index then
+          midi_out_device:cc(1, util.clamp(math.floor(util.linlin(0, 1.5, 0, 127, plocks.master_index)), 0, 127), cc_ch)
+        end
+        if plocks.drive then
+          midi_out_device:cc(16, util.clamp(math.floor(util.linlin(0, 1, 0, 127, plocks.drive)), 0, 127), cc_ch)
+        end
+        if plocks.resonance then
+          midi_out_device:cc(71, util.clamp(math.floor(util.linlin(0, 3.5, 0, 127, plocks.resonance)), 0, 127), cc_ch)
+        end
+      end
+
       -- velocity with accent
       local vel = melody.vel
       if seq.is_accent() then vel = math.min(1.0, vel * 1.3) end
@@ -1091,6 +1172,9 @@ function key(n, z)
       seq.playing = not seq.playing
       if not seq.playing and current_note then note_off(current_note) end
       if seq.playing then seq.reset() end
+      if params:get("midi_transport") == 2 and midi_out_device then
+        if seq.playing then midi_out_device:start() else midi_out_device:stop() end
+      end
     end
 
   elseif n == 3 then
@@ -1687,6 +1771,9 @@ function grid_key(x, y, z)
         seq.playing = not seq.playing
         if not seq.playing and current_note then note_off(current_note) end
         if seq.playing then seq.reset() end
+        if params:get("midi_transport") == 2 and midi_out_device then
+          if seq.playing then midi_out_device:start() else midi_out_device:stop() end
+        end
       end
 
     -- ROW 2: waveshape select
