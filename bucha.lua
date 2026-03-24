@@ -749,9 +749,9 @@ function init()
   end)
 
   params:add_option("octopus_speed", "octopus speed",
-    {"slow", "normal", "fast", "hyper"}, 3)  -- default fast
+    {"slow", "normal", "fast"}, 2)  -- default normal (safe)
   params:set_action("octopus_speed", function(v)
-    local divs = {1/4, 1/8, 1/16, 1/32}
+    local divs = {1/4, 1/8, 1/16}
     if octopus_sprocket then octopus_sprocket:set_division(divs[v]) end
     if bandmate_sprocket then bandmate_sprocket:set_division(divs[v]) end
   end)
