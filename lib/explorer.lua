@@ -1,4 +1,4 @@
--- buchla700 explorer
+-- bucha explorer
 --
 -- a west coast operator who lives inside the machine.
 -- not a parameter randomizer — a musician with aesthetic convictions.

@@ -1,5 +1,5 @@
--- buchla700
--- norns port of the buchla 700
+-- bucha
+-- norns port of the bucha
 -- FM + waveshaping + OTA ladder
 -- 12 FM routing topologies
 --
@@ -19,7 +19,7 @@
 --   explorer: rides topology, indices, filter, effects
 --   bandmate: generates melodic material with breathing + song form
 
-engine.name = "Buchla700"
+engine.name = "Bucha"
 
 local musicutil = require "musicutil"
 local lattice_lib = require "lattice"
@@ -134,7 +134,7 @@ local TOPOLOGY_CONNECTIONS = {
 -- --------------------------------------------------------------------------
 
 function init()
-  params:add_separator("BUCHLA 700")
+  params:add_separator("BUCHA")
 
   -- FM TOPOLOGY
   params:add_group("FM TOPOLOGY", 8)

@@ -1,6 +1,6 @@
--- buchla700 sequencer
+-- bucha sequencer
 --
--- a sequencer worthy of the buchla 700:
+-- a sequencer worthy of bucha:
 -- polymetric tracks, per-step parameter locks,
 -- conditional triggers, generative evolution.
 --

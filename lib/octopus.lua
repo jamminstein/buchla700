@@ -1,4 +1,4 @@
--- buchla700 octopus
+-- bucha octopus
 --
 -- 8 tentacles, each a specialized intelligence
 -- operating a different dimension of the instrument simultaneously.
@@ -626,68 +626,122 @@ function octopus.act_spectrum(soul)
   end
 
   -- texture: noise, sub, tremolo, LFO filter, envelope
-  if math.random() < 0.3 * t.energy then
-    -- noise: builds with tension
-    nudge("noise", rand_delta(0.02) * t.energy, 0.0, 0.3)
+  -- ALL of these should be much more active
+  if math.random() < 0.45 * t.energy then
+    -- noise: builds with form phase
+    if octopus.form_phase == "PEAK" then
+      nudge("noise", math.random() * 0.06, 0.0, 0.4)
+    elseif octopus.form_phase == "BUILD" then
+      nudge("noise", rand_delta(0.04) * t.energy, 0.0, 0.3)
+    else
+      nudge("noise", -0.02, 0.0, 0.4)
+    end
   end
-  if math.random() < 0.2 * t.energy then
-    -- sub: weight during BUILD/PEAK
+  if math.random() < 0.35 * t.energy then
+    -- sub: adds real weight during intense passages
     if octopus.form_phase == "BUILD" or octopus.form_phase == "PEAK" then
-      nudge("sub_osc", math.random() * 0.03, 0.0, 0.4)
+      nudge("sub_osc", math.random() * 0.06, 0.0, 0.45)
+    elseif octopus.form_phase == "REST" then
+      nudge("sub_osc", -0.04, 0.0, 0.45)
     else
-      nudge("sub_osc", -0.02, 0.0, 0.4)
+      nudge("sub_osc", rand_delta(0.02), 0.0, 0.3)
     end
   end
-  if math.random() < 0.15 then
-    -- tremolo
-    nudge("trem_depth", rand_delta(0.04 * t.energy), 0.0, 0.6)
-    if params:get("trem_depth") > 0.05 then
-      nudge("trem_rate", rand_delta(1.0), 0.5, 15)
+  if math.random() < 0.3 then
+    -- tremolo: more dramatic, form-dependent
+    if octopus.form_phase == "BUILD" or octopus.form_phase == "PEAK" then
+      nudge("trem_depth", rand_delta(0.08 * t.energy), 0.0, 0.7)
+      nudge("trem_rate", rand_delta(2.0), 0.5, 18)
+    else
+      nudge("trem_depth", -0.03, 0.0, 0.7)
     end
   end
-  if math.random() < 0.2 then
-    -- LFO > filter (auto-wah)
-    nudge("lfo_filter", rand_delta(0.03 * t.energy), 0.0, 0.6)
-    if params:get("lfo_filter") > 0.05 then
-      nudge("lfo_filter_rate", rand_delta(0.5), 0.2, 12)
+  if math.random() < 0.35 then
+    -- LFO > filter (auto-wah): dramatic sweeps
+    if octopus.form_phase == "PEAK" then
+      nudge("lfo_filter", math.random() * 0.08, 0.0, 0.8)
+      nudge("lfo_filter_rate", rand_delta(1.5), 0.2, 15)
+    elseif octopus.form_phase == "BUILD" then
+      nudge("lfo_filter", rand_delta(0.05 * t.energy), 0.0, 0.6)
+      nudge("lfo_filter_rate", rand_delta(0.8), 0.2, 12)
+    else
+      nudge("lfo_filter", -0.03, 0.0, 0.8)
     end
   end
-  if math.random() < 0.15 then
-    -- envelope shape shifting
+  if math.random() < 0.3 then
+    -- envelope shape shifting: dramatic character changes
     local roll = math.random()
-    if roll < 0.3 then
-      nudge("attack", rand_delta(0.05 * t.energy), 0.001, 1.5)
-    elseif roll < 0.6 then
-      nudge("decay", rand_delta(0.1 * t.energy), 0.01, 3.0)
-    elseif roll < 0.8 then
-      nudge("sustain_level", rand_delta(0.05), 0.1, 1.0)
+    if octopus.form_phase == "PEAK" then
+      -- PEAK: short punchy attacks, variable everything
+      if roll < 0.3 then
+        params:set("attack", math.random() * 0.02 + 0.001)
+      elseif roll < 0.6 then
+        nudge("decay", rand_delta(0.25 * t.energy), 0.01, 3.0)
+      elseif roll < 0.8 then
+        nudge("sustain_level", rand_delta(0.12), 0.1, 1.0)
+      else
+        nudge("release", rand_delta(0.3 * t.energy), 0.01, 4.0)
+      end
+    elseif octopus.form_phase == "DRIFT" then
+      -- DRIFT: longer attacks, sustained
+      if roll < 0.4 then
+        nudge("attack", math.random() * 0.15, 0.01, 1.5)
+      elseif roll < 0.7 then
+        nudge("sustain_level", rand_delta(0.06), 0.3, 1.0)
+      else
+        nudge("release", rand_delta(0.2), 0.1, 4.0)
+      end
     else
-      nudge("release", rand_delta(0.1 * t.energy), 0.01, 4.0)
+      -- BUILD/REST: moderate changes
+      if roll < 0.3 then
+        nudge("attack", rand_delta(0.08 * t.energy), 0.001, 1.5)
+      elseif roll < 0.6 then
+        nudge("decay", rand_delta(0.15 * t.energy), 0.01, 3.0)
+      elseif roll < 0.8 then
+        nudge("sustain_level", rand_delta(0.08), 0.1, 1.0)
+      else
+        nudge("release", rand_delta(0.15 * t.energy), 0.01, 4.0)
+      end
     end
   end
 end
 
--- 3. FILTER: breathes cutoff/resonance/drive
+-- 3. FILTER: the lungs — BREATHES with dramatic sweeps
 function octopus.act_filter(soul)
   local t = octopus.tentacles[T_FILTER]
-  local mag = t.energy * 0.15
+  local mag = t.energy * 0.25  -- bigger base magnitude
 
-  -- cutoff: gravitates toward soul's center, breathes with energy
+  -- cutoff: gravitates toward soul's center but with WIDE breathing
   local current = params:get("cutoff")
-  local pull = (soul.cutoff_center - current) * 0.04
-  local sweep = rand_delta(soul.cutoff_range * mag * 0.1)
+  local pull = (soul.cutoff_center - current) * 0.06
+
+  -- form-dependent sweep intensity
+  local sweep_mult = 1.0
+  if octopus.form_phase == "PEAK" then sweep_mult = 2.5
+  elseif octopus.form_phase == "BUILD" then sweep_mult = 1.8
+  elseif octopus.form_phase == "REST" then sweep_mult = 0.5 end
+
+  local sweep = rand_delta(soul.cutoff_range * mag * 0.15 * sweep_mult)
   params:set("cutoff", util.clamp(current + pull + sweep, 40, 18000))
 
-  -- resonance
-  if math.random() < soul.res_love then
-    nudge("resonance", rand_delta(mag * 5), 0.0, 3.2)
+  -- resonance: more dramatic, form-dependent
+  if math.random() < soul.res_love * (0.8 + t.energy * 0.4) then
+    local res_delta = rand_delta(mag * 8)
+    if octopus.form_phase == "PEAK" then
+      res_delta = res_delta * 1.5
+    end
+    nudge("resonance", res_delta, 0.0, 3.2)
   end
 
-  -- drive
-  if octopus.form_phase == "PEAK" or octopus.form_phase == "BUILD" then
+  -- drive: builds significantly during BUILD/PEAK
+  if octopus.form_phase == "PEAK" then
+    nudge("drive", math.random() * 0.10 * soul.drive_love, 0.0, soul.drive_love * 1.3)
+  elseif octopus.form_phase == "BUILD" then
     nudge("drive", math.random() * 0.06 * soul.drive_love, 0.0, soul.drive_love)
   elseif octopus.form_phase == "REST" then
-    nudge("drive", -0.04, 0.0, 1.0)
+    nudge("drive", -0.06, 0.0, 1.0)
+  else
+    nudge("drive", rand_delta(0.02), 0.0, soul.drive_love * 0.7)
   end
 end
 
@@ -809,47 +863,74 @@ function octopus.act_melody(soul)
 end
 
 -- 6. SPACE: phaser, exciter, tilt, delay, reverb, chorus
+-- THIS IS THE ROOM — it should MOVE dramatically
 function octopus.act_space(soul)
   local t = octopus.tentacles[T_SPACE]
-  local mag = t.energy * 0.08
+  local mag = t.energy * 0.2  -- 2.5x bigger base magnitude
 
-  -- phaser
-  if octopus.form_phase ~= "REST" then
-    nudge("phaser_intensity", rand_delta(mag) * soul.phaser_love, 0.0, 0.9)
-    if math.random() < 0.25 then nudge("phaser_rate", rand_delta(0.3), 0.1, 5.0) end
-  else
-    nudge("phaser_intensity", -0.03, 0.0, 1.0)
-  end
-
-  -- exciter
-  nudge("exciter_amount", rand_delta(mag) * soul.exciter_love, 0.0, 0.8)
-
-  -- tilt
-  local tilt_pull = (soul.tilt_center - params:get("tilt_eq")) * 0.08
-  nudge("tilt_eq", tilt_pull + rand_delta(0.03), -0.8, 0.8)
-
-  -- delay: opens during BUILD/PEAK
-  if octopus.form_phase == "BUILD" or octopus.form_phase == "PEAK" then
-    nudge("delay_mix", math.random() * 0.04 * t.energy, 0.0, 0.7)
-    if math.random() < 0.2 then nudge("delay_time", rand_delta(0.05), 0.05, 1.0) end
-    if math.random() < 0.15 then nudge("delay_feedback", rand_delta(0.05), 0.1, 0.85) end
-  elseif octopus.form_phase == "REST" then
-    nudge("delay_mix", -0.03, 0.0, 1.0)
-  end
-
-  -- reverb: builds, stays during REST (tails)
+  -- phaser: dramatic sweeps
   if octopus.form_phase == "PEAK" then
-    nudge("reverb_mix", math.random() * 0.03, 0.0, 0.8)
-    nudge("reverb_size", rand_delta(0.03), 0.2, 0.95)
+    nudge("phaser_intensity", math.random() * 0.12 * soul.phaser_love, 0.0, 0.9)
+    nudge("phaser_rate", rand_delta(0.5), 0.1, 6.0)
+    nudge("phaser_depth", rand_delta(0.08), 0.1, 1.0)
+  elseif octopus.form_phase == "BUILD" then
+    nudge("phaser_intensity", rand_delta(mag) * soul.phaser_love, 0.0, 0.9)
+    if math.random() < 0.35 then nudge("phaser_rate", rand_delta(0.4), 0.1, 5.0) end
   elseif octopus.form_phase == "REST" then
-    nudge("reverb_size", -0.02, 0.2, 0.95)
-  elseif octopus.form_phase == "DRIFT" then
-    nudge("reverb_mix", -0.02, 0.0, 1.0)
+    nudge("phaser_intensity", -0.06, 0.0, 1.0)
+  else -- DRIFT
+    nudge("phaser_intensity", rand_delta(0.04) * soul.phaser_love, 0.0, 0.5)
   end
 
-  -- chorus
-  if math.random() < 0.2 then
-    nudge("chorus_mix", rand_delta(0.04 * t.energy), 0.0, 0.5)
+  -- exciter: presence shifts
+  nudge("exciter_amount", rand_delta(mag * 1.5) * soul.exciter_love, 0.0, 0.8)
+
+  -- tilt: dramatic bright/dark shifts
+  local tilt_pull = (soul.tilt_center - params:get("tilt_eq")) * 0.1
+  nudge("tilt_eq", tilt_pull + rand_delta(0.08 * t.energy), -0.8, 0.8)
+
+  -- delay: the room OPENS and CLOSES
+  if octopus.form_phase == "PEAK" then
+    nudge("delay_mix", math.random() * 0.12 * t.energy, 0.0, 0.8)
+    nudge("delay_time", rand_delta(0.08), 0.05, 1.0)
+    nudge("delay_feedback", rand_delta(0.08), 0.15, 0.85)
+  elseif octopus.form_phase == "BUILD" then
+    nudge("delay_mix", math.random() * 0.08 * t.energy, 0.0, 0.7)
+    if math.random() < 0.35 then nudge("delay_time", rand_delta(0.06), 0.05, 1.0) end
+    if math.random() < 0.3 then nudge("delay_feedback", rand_delta(0.06), 0.1, 0.75) end
+  elseif octopus.form_phase == "REST" then
+    nudge("delay_mix", -0.06, 0.0, 1.0)
+    nudge("delay_feedback", -0.03, 0.0, 0.9)
+  elseif octopus.form_phase == "DRIFT" then
+    -- gentle delay drift
+    if math.random() < 0.3 then
+      nudge("delay_mix", rand_delta(0.04), 0.0, 0.4)
+    end
+  end
+
+  -- reverb: the space itself breathes
+  if octopus.form_phase == "PEAK" then
+    nudge("reverb_mix", math.random() * 0.10, 0.0, 0.85)
+    nudge("reverb_size", rand_delta(0.06), 0.2, 0.95)
+    nudge("reverb_damp", rand_delta(0.05), 0.1, 0.9)
+  elseif octopus.form_phase == "BUILD" then
+    nudge("reverb_mix", math.random() * 0.06, 0.0, 0.7)
+    nudge("reverb_size", rand_delta(0.04), 0.2, 0.9)
+  elseif octopus.form_phase == "REST" then
+    -- reverb STAYS during rest (beautiful tails) but size contracts
+    nudge("reverb_size", -0.03, 0.3, 0.95)
+  elseif octopus.form_phase == "DRIFT" then
+    nudge("reverb_mix", rand_delta(0.03), 0.0, 0.5)
+  end
+
+  -- chorus: thickening
+  if math.random() < 0.35 then
+    if octopus.form_phase == "BUILD" or octopus.form_phase == "PEAK" then
+      nudge("chorus_mix", math.random() * 0.08 * t.energy, 0.0, 0.6)
+      nudge("chorus_rate", rand_delta(0.2), 0.1, 3.0)
+    else
+      nudge("chorus_mix", rand_delta(0.04 * t.energy), 0.0, 0.4)
+    end
   end
 end
 
@@ -876,85 +957,158 @@ function octopus.act_form(soul)
 
     octopus.form_phase = octopus.form_template[octopus.form_idx]
 
-    -- phase length varies by soul dramatics
-    local base = math.random(16, 40)
+    -- phase length varies by soul dramatics — SHORTER for more drama
+    local base = math.random(10, 28)  -- shorter phases = more dynamic
     octopus.form_length = math.floor(base / soul.form_dramatics)
 
-    -- phase entry effects
+    -- phase entry effects — BIG GESTURES at transitions
     if octopus.form_phase == "REST" then
-      -- pull toward anchors
-      octopus.restore_anchors(0.3)
-      -- silence some tentacles
+      -- pull toward anchors more strongly
+      octopus.restore_anchors(0.45)
+      -- dramatic: drop delay/reverb tails
+      nudge("delay_feedback", -0.15, 0.0, 0.9)
+      -- silence some tentacles for contrast
       if math.random() < soul.silence_love then
-        local victim = math.random(1, 6)  -- not FORM or CHAOS
+        local victim = math.random(1, 6)
         octopus.tentacles[victim].breath_phase = "fade"
       end
+      -- second silence for really dramatic souls
+      if math.random() < soul.silence_love * 0.5 then
+        local victim2 = math.random(1, 6)
+        octopus.tentacles[victim2].breath_phase = "fade"
+      end
     elseif octopus.form_phase == "PEAK" then
-      -- energize all tentacles
+      -- EXPLODE: energize all tentacles
       for i = 1, NUM_TENTACLES do
-        octopus.tentacles[i].energy = math.max(octopus.tentacles[i].energy, 0.6)
+        octopus.tentacles[i].energy = math.max(octopus.tentacles[i].energy, 0.7)
         octopus.tentacles[i].breath_phase = "play"
+      end
+      -- dramatic entry: boost intensity immediately
+      nudge("delay_mix", 0.15, 0.0, 0.8)
+      nudge("reverb_mix", 0.1, 0.0, 0.85)
+      nudge("exciter_amount", 0.08, 0.0, 0.8)
+      -- occasional dramatic filter sweep on PEAK entry
+      if math.random() < 0.4 then
+        params:set("cutoff", math.random(6000, 14000))
+      end
+    elseif octopus.form_phase == "BUILD" then
+      -- gentle wake-up: start building
+      for i = 1, NUM_TENTACLES do
+        octopus.tentacles[i].energy = math.max(octopus.tentacles[i].energy, 0.3)
+        if octopus.tentacles[i].breath_phase == "silence" then
+          octopus.tentacles[i].breath_phase = "build"
+        end
       end
     elseif octopus.form_phase == "DRIFT" then
       -- gentle pull toward anchors
-      octopus.restore_anchors(0.15)
+      octopus.restore_anchors(0.2)
+      -- reduce effects gently
+      nudge("delay_mix", -0.08, 0.0, 1.0)
+      nudge("chorus_mix", -0.05, 0.0, 1.0)
     end
   end
 end
 
--- 8. CHAOS: the wild card
+-- 8. CHAOS: the wild card — MORE FREQUENT, BIGGER GESTURES
 function octopus.act_chaos(soul)
   local t = octopus.tentacles[T_CHAOS]
-  if math.random() > soul.chaos_freq * t.energy then return end
+  -- higher base frequency: fires more often
+  if math.random() > (soul.chaos_freq * 1.5) * (0.5 + t.energy * 0.8) then return end
 
   local mag = soul.chaos_magnitude * t.energy
   local seq = octopus.seq
 
   local roll = math.random()
-  if roll < 0.2 then
-    -- p-lock storm: add multiple random p-locks
-    local num = math.random(2, 5)
+  if roll < 0.15 then
+    -- p-lock storm: add MANY random p-locks
+    local num = math.random(3, 8)
     for _ = 1, num do
       local step_idx = math.random(1, seq.track_len[seq.TRACK_TIMBRE])
       local step = seq.timbre[step_idx]
-      local what = math.random(1, 5)
+      local what = math.random(1, 7)
       if what == 1 then step.config = math.random(0, 11)
-      elseif what == 2 then step.cutoff = math.random(100, 12000)
-      elseif what == 3 then step.master_index = math.random() * soul.index_ceiling
+      elseif what == 2 then step.cutoff = math.random(60, 16000)
+      elseif what == 3 then step.master_index = math.random() * soul.index_ceiling * 1.3
       elseif what == 4 then step.wsa = math.random(0, 7)
       elseif what == 5 then step.wsb = math.random(0, 7)
+      elseif what == 6 then step.drive = math.random() * 0.6
+      elseif what == 7 then step.resonance = math.random() * 2.5
       end
     end
-  elseif roll < 0.35 then
+  elseif roll < 0.25 then
     -- polymetric disruption: randomize all track lengths
-    seq.track_len[seq.TRACK_MELODY] = math.random(5, 13)
-    seq.track_len[seq.TRACK_TIMBRE] = math.random(5, 13)
-    seq.track_len[seq.TRACK_RHYTHM] = math.random(5, 13)
-  elseif roll < 0.5 then
-    -- index explosion
+    seq.track_len[seq.TRACK_MELODY] = math.random(3, 15)
+    seq.track_len[seq.TRACK_TIMBRE] = math.random(3, 15)
+    seq.track_len[seq.TRACK_RHYTHM] = math.random(3, 15)
+  elseif roll < 0.35 then
+    -- index explosion: ALL indices go wild
     for i = 1, 6 do
-      params:set("index" .. i, math.random() * soul.index_ceiling * mag)
+      params:set("index" .. i, math.random() * soul.index_ceiling * mag * 1.3)
     end
-  elseif roll < 0.65 then
+    params:set("master_index", math.random() * soul.index_ceiling * mag)
+  elseif roll < 0.45 then
     -- ratchet storm
     for i = 1, seq.track_len[seq.TRACK_RHYTHM] do
-      if math.random() < 0.4 then
+      if math.random() < 0.5 then
         seq.rhythm[i].ratchet = math.random(2, 4)
       end
     end
-    t.cooldown = 4
-  elseif roll < 0.8 then
-    -- filter sweep: sudden dramatic cutoff change
-    local target = math.random() < 0.5 and 100 or 12000
-    params:set("cutoff", target)
     t.cooldown = 3
-  else
+  elseif roll < 0.55 then
+    -- filter sweep: sudden dramatic cutoff change
+    local target = math.random() < 0.5 and math.random(40, 200) or math.random(8000, 16000)
+    params:set("cutoff", target)
+    -- sometimes pair with resonance spike
+    if math.random() < 0.4 then
+      params:set("resonance", math.random() * 2.5 + 0.5)
+    end
+    t.cooldown = 2
+  elseif roll < 0.65 then
     -- topology rapid-fire: set per-step topologies
     for i = 1, seq.track_len[seq.TRACK_TIMBRE] do
-      if math.random() < 0.5 * mag then
+      if math.random() < 0.6 * mag then
         seq.timbre[i].config = math.random(0, 11)
       end
     end
+  elseif roll < 0.75 then
+    -- SPACE BOMB: sudden FX changes
+    if math.random() < 0.5 then
+      params:set("delay_mix", math.random() * 0.6)
+      params:set("delay_feedback", 0.2 + math.random() * 0.4)
+    else
+      params:set("reverb_mix", math.random() * 0.6)
+      params:set("reverb_size", 0.4 + math.random() * 0.5)
+    end
+    t.cooldown = 3
+  elseif roll < 0.85 then
+    -- TEXTURE SHOCK: sudden noise/sub/tremolo change
+    local what = math.random(1, 4)
+    if what == 1 then
+      params:set("noise", math.random() * 0.3)
+    elseif what == 2 then
+      params:set("sub_osc", math.random() * 0.4)
+    elseif what == 3 then
+      params:set("trem_depth", math.random() * 0.5)
+      params:set("trem_rate", math.random() * 12 + 1)
+    else
+      params:set("lfo_filter", math.random() * 0.5)
+      params:set("lfo_filter_rate", math.random() * 10 + 0.5)
+    end
+  else
+    -- ENVELOPE DISRUPTION: sudden character change
+    local shapes = {
+      {0.001, 0.05, 0.9, 0.1},   -- percussive
+      {0.5, 0.3, 0.7, 2.0},      -- pad
+      {0.001, 0.01, 1.0, 0.05},  -- pluck
+      {0.2, 1.0, 0.3, 3.0},      -- swell
+      {0.001, 0.1, 0.0, 0.3},    -- stab
+    }
+    local shape = shapes[math.random(#shapes)]
+    params:set("attack", shape[1])
+    params:set("decay", shape[2])
+    params:set("sustain_level", shape[3])
+    params:set("release", shape[4])
+    t.cooldown = 4
   end
 end
 

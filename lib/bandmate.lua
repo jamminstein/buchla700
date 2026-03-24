@@ -1,4 +1,4 @@
--- buchla700 bandmate
+-- bucha bandmate
 --
 -- not a note generator. a musician.
 -- aware of what the explorer is doing, responds to it.

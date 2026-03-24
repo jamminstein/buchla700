@@ -1,12 +1,12 @@
-// Engine_Buchla700
-// Norns port of the Buchla 700 DSP engine
+// Engine_Bucha
+// Norns port of the Bucha DSP engine
 // 4-voice FM + waveshaping + OTA ladder filter
 // 12 FM routing topologies, aural exciter, 8-stage phase shifter
 //
 // Original DSP by The Contributors (GPL v3)
 // Norns adaptation 2026
 
-Engine_Buchla700 : CroneEngine {
+Engine_Bucha : CroneEngine {
 	var <voices;       // Dictionary of active voice synths
 	var <params;       // global parameter state
 	var <fxBus;        // effects send bus
@@ -77,7 +77,7 @@ Engine_Buchla700 : CroneEngine {
 		// -- Voice SynthDef with all 12 FM topologies --
 		// Use SinOsc directly for FM — avoids Select.ar rate issues
 		// Config selects topology at note-on time (not modulatable per-sample)
-		// This is faithful to the original Buchla 700 which set config per-voice
+		// This is faithful to the original Bucha which set config per-voice
 
 		SynthDef(\b700v00, { arg out, freq=440, vel=0.8, gate=1,
 			ratio2=2.0, ratio3=3.0, ratio4=4.0,
@@ -111,6 +111,8 @@ Engine_Buchla700 : CroneEngine {
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
 			sig = filtered * env * vel * amp * tremLfo;
+			// frequency-dependent gain: tame higher notes
+			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
 			sig = Pan2.ar(sig, pan);
 			Out.ar(out, sig);
 		}).add;
@@ -147,6 +149,8 @@ Engine_Buchla700 : CroneEngine {
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
 			sig = filtered * env * vel * amp * tremLfo;
+			// frequency-dependent gain: tame higher notes
+			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
 			sig = Pan2.ar(sig, pan);
 			Out.ar(out, sig);
 		}).add;
@@ -183,6 +187,8 @@ Engine_Buchla700 : CroneEngine {
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
 			sig = filtered * env * vel * amp * tremLfo;
+			// frequency-dependent gain: tame higher notes
+			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
 			sig = Pan2.ar(sig, pan);
 			Out.ar(out, sig);
 		}).add;
@@ -219,6 +225,8 @@ Engine_Buchla700 : CroneEngine {
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
 			sig = filtered * env * vel * amp * tremLfo;
+			// frequency-dependent gain: tame higher notes
+			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
 			sig = Pan2.ar(sig, pan);
 			Out.ar(out, sig);
 		}).add;
@@ -255,6 +263,8 @@ Engine_Buchla700 : CroneEngine {
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
 			sig = filtered * env * vel * amp * tremLfo;
+			// frequency-dependent gain: tame higher notes
+			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
 			sig = Pan2.ar(sig, pan);
 			Out.ar(out, sig);
 		}).add;
@@ -291,6 +301,8 @@ Engine_Buchla700 : CroneEngine {
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
 			sig = filtered * env * vel * amp * tremLfo;
+			// frequency-dependent gain: tame higher notes
+			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
 			sig = Pan2.ar(sig, pan);
 			Out.ar(out, sig);
 		}).add;
@@ -327,6 +339,8 @@ Engine_Buchla700 : CroneEngine {
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
 			sig = filtered * env * vel * amp * tremLfo;
+			// frequency-dependent gain: tame higher notes
+			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
 			sig = Pan2.ar(sig, pan);
 			Out.ar(out, sig);
 		}).add;
@@ -363,6 +377,8 @@ Engine_Buchla700 : CroneEngine {
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
 			sig = filtered * env * vel * amp * tremLfo;
+			// frequency-dependent gain: tame higher notes
+			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
 			sig = Pan2.ar(sig, pan);
 			Out.ar(out, sig);
 		}).add;
@@ -399,6 +415,8 @@ Engine_Buchla700 : CroneEngine {
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
 			sig = filtered * env * vel * amp * tremLfo;
+			// frequency-dependent gain: tame higher notes
+			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
 			sig = Pan2.ar(sig, pan);
 			Out.ar(out, sig);
 		}).add;
@@ -435,6 +453,8 @@ Engine_Buchla700 : CroneEngine {
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
 			sig = filtered * env * vel * amp * tremLfo;
+			// frequency-dependent gain: tame higher notes
+			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
 			sig = Pan2.ar(sig, pan);
 			Out.ar(out, sig);
 		}).add;
@@ -471,6 +491,8 @@ Engine_Buchla700 : CroneEngine {
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
 			sig = filtered * env * vel * amp * tremLfo;
+			// frequency-dependent gain: tame higher notes
+			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
 			sig = Pan2.ar(sig, pan);
 			Out.ar(out, sig);
 		}).add;
@@ -507,6 +529,8 @@ Engine_Buchla700 : CroneEngine {
 			// envelope
 			env = EnvGen.kr(Env.adsr(atk, dec, sus, rel), gate, doneAction:2);
 			sig = filtered * env * vel * amp * tremLfo;
+			// frequency-dependent gain: tame higher notes
+			sig = sig * freq.explin(2000, 10000, 1.0, 0.4).lag(0.01);
 			sig = Pan2.ar(sig, pan);
 			Out.ar(out, sig);
 		}).add;
@@ -578,8 +602,8 @@ Engine_Buchla700 : CroneEngine {
 			right = BHiShelf.ar(right, 3000, 1, tilt * 6);
 
 			// ---- STEREO DELAY ----
-			delL = CombL.ar(left, 1.0, delayTime.clip(0.01, 1.0), delayFeedback * 4);
-			delR = CombL.ar(right, 1.0, (delayTime * 0.75).clip(0.01, 1.0), delayFeedback * 4);
+			delL = CombL.ar(left, 1.0, delayTime.clip(0.01, 1.0), delayFeedback.clip(0, 0.85) * 3);
+			delR = CombL.ar(right, 1.0, (delayTime * 0.75).clip(0.01, 1.0), delayFeedback.clip(0, 0.85) * 3);
 			left = left + (delL * delayMix);
 			right = right + (delR * delayMix);
 
@@ -596,11 +620,10 @@ Engine_Buchla700 : CroneEngine {
 			left = revSig[0];
 			right = revSig[1];
 
-			// soft clamp
-			left = left.clip(-1, 1);
-			right = right.clip(-1, 1);
+			// gentle brick-wall limiter (longer lookahead = less pumping artifacts)
+			sig = Limiter.ar([left, right], 0.9, 0.02);
 
-			Out.ar(out, [left, right]);
+			Out.ar(out, sig);
 		}).add;
 
 		server.sync;

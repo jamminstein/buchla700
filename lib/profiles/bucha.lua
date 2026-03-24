@@ -1,4 +1,4 @@
--- buchla700 robot profile
+-- bucha robot profile
 --
 -- the robot is a topology explorer, not a parameter randomizer.
 -- it rides FM indices like a buchla operator rides a complex oscillator:
@@ -7,7 +7,7 @@
 -- like changing a patch cable on a modular.
 
 return {
-  name = "buchla700",
+  name = "bucha",
   description = "FM topology explorer — rides indices, drifts ratios, shifts routing",
   phrase_len = 8,
   recommended_modes = {1, 2, 3},  -- DRIFT, MORPH, CHAOS
