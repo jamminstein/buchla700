@@ -524,7 +524,7 @@ function init()
   end)
 
   params:add_control("master_index", "master index",
-    controlspec.new(0, 1.5, 'lin', 0.05, 0.5, ""))
+    controlspec.new(0, 2.0, 'lin', 0.05, 0.5, ""))
   params:set_action("master_index", function(v)
     master_index = v
     engine.master_index(v)
@@ -615,7 +615,7 @@ function init()
     controlspec.new(0, 0.5, 'lin', 0.01, 0, ""))
   params:set_action("noise", function(v) engine.noise(v) end)
   params:add_control("sub_osc", "sub oscillator",
-    controlspec.new(0, 0.5, 'lin', 0.01, 0, ""))
+    controlspec.new(0, 0.7, 'lin', 0.01, 0.15, ""))
   params:set_action("sub_osc", function(v) engine.sub(v) end)
   params:add_control("trem_rate", "tremolo rate",
     controlspec.new(0, 20, 'lin', 0.1, 0, "hz"))

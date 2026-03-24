@@ -802,9 +802,10 @@ Engine_Bucha : CroneEngine {
 			right = (apR * 0.8 * phaserIntensity.lag(0.05)) + (right * (1 - (phaserIntensity.lag(0.05) * 0.8)));
 
 			// ---- TILT EQ ----
-			left = BLowShelf.ar(left, 300, 1, tilt.lag(0.05).neg * 6);
+			// tilt EQ: reduced bass cut, bass always boosted +3dB for presence
+			left = BLowShelf.ar(left, 300, 1, 3 + (tilt.lag(0.05).neg * 3));
 			left = BHiShelf.ar(left, 3000, 1, tilt.lag(0.05) * 5);
-			right = BLowShelf.ar(right, 300, 1, tilt.lag(0.05).neg * 6);
+			right = BLowShelf.ar(right, 300, 1, 3 + (tilt.lag(0.05).neg * 3));
 			right = BHiShelf.ar(right, 3000, 1, tilt.lag(0.05) * 5);
 
 			// ---- STEREO DELAY ----
@@ -889,12 +890,12 @@ Engine_Bucha : CroneEngine {
 				\ratio2, params[\ratio2],
 				\ratio3, params[\ratio3],
 				\ratio4, params[\ratio4],
-				\idx1, (params[\index1] * params[\masterIndex]).clip(0, 1.8),
-				\idx2, (params[\index2] * params[\masterIndex]).clip(0, 1.8),
-				\idx3, (params[\index3] * params[\masterIndex]).clip(0, 1.8),
-				\idx4, (params[\index4] * params[\masterIndex]).clip(0, 1.8),
-				\idx5, (params[\index5] * params[\masterIndex]).clip(0, 1.8),
-				\idx6, (params[\index6] * params[\masterIndex]).clip(0, 1.8),
+				\idx1, (params[\index1] * params[\masterIndex]).clip(0, 3.5),
+				\idx2, (params[\index2] * params[\masterIndex]).clip(0, 3.5),
+				\idx3, (params[\index3] * params[\masterIndex]).clip(0, 3.5),
+				\idx4, (params[\index4] * params[\masterIndex]).clip(0, 3.5),
+				\idx5, (params[\index5] * params[\masterIndex]).clip(0, 3.5),
+				\idx6, (params[\index6] * params[\masterIndex]).clip(0, 3.5),
 				\cutoff, params[\cutoff],
 				\resonance, params[\resonance],
 				\drive, params[\drive],
@@ -952,43 +953,43 @@ Engine_Bucha : CroneEngine {
 
 		this.addCommand("index1", "f", { arg msg;
 			params[\index1] = msg[1].asFloat;
-			voices.do({ arg s; s.set(\idx1, (params[\index1] * params[\masterIndex]).clip(0, 1.8)) });
+			voices.do({ arg s; s.set(\idx1, (params[\index1] * params[\masterIndex]).clip(0, 3.5)) });
 		});
 
 		this.addCommand("index2", "f", { arg msg;
 			params[\index2] = msg[1].asFloat;
-			voices.do({ arg s; s.set(\idx2, (params[\index2] * params[\masterIndex]).clip(0, 1.8)) });
+			voices.do({ arg s; s.set(\idx2, (params[\index2] * params[\masterIndex]).clip(0, 3.5)) });
 		});
 
 		this.addCommand("index3", "f", { arg msg;
 			params[\index3] = msg[1].asFloat;
-			voices.do({ arg s; s.set(\idx3, (params[\index3] * params[\masterIndex]).clip(0, 1.8)) });
+			voices.do({ arg s; s.set(\idx3, (params[\index3] * params[\masterIndex]).clip(0, 3.5)) });
 		});
 
 		this.addCommand("index4", "f", { arg msg;
 			params[\index4] = msg[1].asFloat;
-			voices.do({ arg s; s.set(\idx4, (params[\index4] * params[\masterIndex]).clip(0, 1.8)) });
+			voices.do({ arg s; s.set(\idx4, (params[\index4] * params[\masterIndex]).clip(0, 3.5)) });
 		});
 
 		this.addCommand("index5", "f", { arg msg;
 			params[\index5] = msg[1].asFloat;
-			voices.do({ arg s; s.set(\idx5, (params[\index5] * params[\masterIndex]).clip(0, 1.8)) });
+			voices.do({ arg s; s.set(\idx5, (params[\index5] * params[\masterIndex]).clip(0, 3.5)) });
 		});
 
 		this.addCommand("index6", "f", { arg msg;
 			params[\index6] = msg[1].asFloat;
-			voices.do({ arg s; s.set(\idx6, (params[\index6] * params[\masterIndex]).clip(0, 1.8)) });
+			voices.do({ arg s; s.set(\idx6, (params[\index6] * params[\masterIndex]).clip(0, 3.5)) });
 		});
 
 		this.addCommand("master_index", "f", { arg msg;
 			params[\masterIndex] = msg[1].asFloat;
 			voices.do({ arg s;
-				s.set(\idx1, (params[\index1] * params[\masterIndex]).clip(0, 1.8));
-				s.set(\idx2, (params[\index2] * params[\masterIndex]).clip(0, 1.8));
-				s.set(\idx3, (params[\index3] * params[\masterIndex]).clip(0, 1.8));
-				s.set(\idx4, (params[\index4] * params[\masterIndex]).clip(0, 1.8));
-				s.set(\idx5, (params[\index5] * params[\masterIndex]).clip(0, 1.8));
-				s.set(\idx6, (params[\index6] * params[\masterIndex]).clip(0, 1.8));
+				s.set(\idx1, (params[\index1] * params[\masterIndex]).clip(0, 3.5));
+				s.set(\idx2, (params[\index2] * params[\masterIndex]).clip(0, 3.5));
+				s.set(\idx3, (params[\index3] * params[\masterIndex]).clip(0, 3.5));
+				s.set(\idx4, (params[\index4] * params[\masterIndex]).clip(0, 3.5));
+				s.set(\idx5, (params[\index5] * params[\masterIndex]).clip(0, 3.5));
+				s.set(\idx6, (params[\index6] * params[\masterIndex]).clip(0, 3.5));
 			});
 		});
 
