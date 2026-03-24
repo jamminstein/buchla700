@@ -106,26 +106,51 @@ local drum_step = 0
 local drum_pattern = 1
 local drum_vol = 0.4
 local drum_tone = 0.5
+local drum_kick_vol = 1.0
+local drum_snare_vol = 1.0
+local drum_hat_vol = 0.6
 local DRUM_PATTERNS = {
   -- name, kick[], hat[], rim[]  (1 = hit, 0 = rest, 0.5 = ghost)
-  { name = "FOUR",      kick = {1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0},
-                         hat  = {0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,0},
-                         rim  = {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0} },
-  { name = "BACKBEAT",   kick = {1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0},
-                         hat  = {1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0},
-                         rim  = {0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0} },
-  { name = "FUNK",       kick = {1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,0,0},
-                         hat  = {1,0.5,1,0.5, 1,0.5,1,0.5, 1,0.5,1,0.5, 1,0.5,1,0.5},
-                         rim  = {0,0,0,0, 1,0,0,0.5, 0,0,0,0, 1,0,0.5,0} },
-  { name = "BREAKBEAT",  kick = {1,0,0,0, 0,0,0,0, 0,0,1,0, 0,0,0,0},
-                         hat  = {1,0,1,0.5, 1,0,1,0, 1,0.5,1,0, 1,0,1,0.5},
-                         rim  = {0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0.5} },
-  { name = "HALFTIME",   kick = {1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-                         hat  = {0,0,0,0, 0,0,0,0, 0,0,1,0, 0,0,0,0},
-                         rim  = {0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0} },
-  { name = "PULSE",      kick = {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-                         hat  = {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-                         rim  = {1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0} },
+  { name = "FOUR",       kick = {1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0},
+                          hat  = {0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,0},
+                          rim  = {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0} },
+  { name = "BACKBEAT",    kick = {1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0},
+                          hat  = {1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0},
+                          rim  = {0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0} },
+  { name = "FUNK",        kick = {1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,0,0},
+                          hat  = {1,0.5,1,0.5, 1,0.5,1,0.5, 1,0.5,1,0.5, 1,0.5,1,0.5},
+                          rim  = {0,0,0,0, 1,0,0,0.5, 0,0,0,0, 1,0,0.5,0} },
+  { name = "BREAKBEAT",   kick = {1,0,0,0, 0,0,0,0, 0,0,1,0, 0,0,0,0},
+                          hat  = {1,0,1,0.5, 1,0,1,0, 1,0.5,1,0, 1,0,1,0.5},
+                          rim  = {0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0.5} },
+  { name = "HALFTIME",    kick = {1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
+                          hat  = {0,0,0,0, 0,0,0,0, 0,0,1,0, 0,0,0,0},
+                          rim  = {0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0} },
+  { name = "PULSE",       kick = {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
+                          hat  = {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
+                          rim  = {1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0} },
+  -- NEW PATTERNS
+  { name = "STUBBLEFIELD", kick = {1,0,0,0, 0,0,0.5,0, 0,0,1,0, 0,0,0,0},
+                          hat  = {1,0.5,1,0.5, 1,0.5,1,0, 1,0.5,1,0.5, 1,0,1,0.5},
+                          rim  = {0,0,0,0, 1,0,0,0.5, 0,0,0,0.5, 1,0,0,0} },
+  { name = "ZIGABOO",     kick = {1,0,0,0.5, 0,0,1,0, 0,0.5,0,0, 1,0,0,0},
+                          hat  = {1,1,1,0.5, 1,0.5,1,1, 1,0.5,1,0.5, 1,1,1,0.5},
+                          rim  = {0,0,0,0, 1,0,0,0, 0,0,0,0.5, 0,0,1,0} },
+  { name = "AFROBEAT",    kick = {1,0,0,0, 0,0,1,0, 0,0,0,0, 1,0,0,0},
+                          hat  = {1,0,1,1, 0,1,1,0, 1,1,0,1, 1,0,1,0},
+                          rim  = {0,0,0,0, 1,0,0,0, 0,0,1,0, 0,0,0,0} },
+  { name = "BOSSA",       kick = {1,0,0,0, 0,0,1,0, 0,1,0,0, 0,0,0,0},
+                          hat  = {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
+                          rim  = {1,0,0,1, 0,0,1,0, 0,1,0,0, 1,0,1,0} },
+  { name = "REGGAETON",   kick = {1,0,0,0, 0,0,0,1, 0,0,0,0, 0,0,0,1},
+                          hat  = {1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0},
+                          rim  = {0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0} },
+  { name = "TRAP",        kick = {1,0,0,0, 0,0,0,0, 0,0,1,0, 0,0,0,0},
+                          hat  = {1,1,0,1, 1,0,1,1, 0,1,1,1, 1,0,1,1},
+                          rim  = {0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0} },
+  { name = "SHUFFLE",     kick = {1,0,0,1, 0,0,1,0, 0,1,0,0, 1,0,0,0},
+                          hat  = {1,0,0.5,1, 0,0.5,1,0, 0.5,1,0,0.5, 1,0,0.5,0},
+                          rim  = {0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0} },
 }
 local DRUM_PATTERN_NAMES = {}
 for _, p in ipairs(DRUM_PATTERNS) do table.insert(DRUM_PATTERN_NAMES, p.name) end
@@ -732,7 +757,7 @@ function init()
   end)
 
   -- DRUMS (creative metronome)
-  params:add_group("DRUMS", 4)
+  params:add_group("DRUMS", 7)
   params:add_option("drum_active", "drums", {"off", "on"}, 1)
   params:set_action("drum_active", function(v)
     drum_active = (v == 2)
@@ -745,6 +770,15 @@ function init()
   params:add_control("drum_vol", "drum vol",
     controlspec.new(0, 1, 'lin', 0.05, 0.4, ""))
   params:set_action("drum_vol", function(v) drum_vol = v end)
+  params:add_control("drum_kick_vol", "kick vol",
+    controlspec.new(0, 1, 'lin', 0.05, 1.0, ""))
+  params:set_action("drum_kick_vol", function(v) drum_kick_vol = v end)
+  params:add_control("drum_snare_vol", "snare vol",
+    controlspec.new(0, 1, 'lin', 0.05, 1.0, ""))
+  params:set_action("drum_snare_vol", function(v) drum_snare_vol = v end)
+  params:add_control("drum_hat_vol", "hat vol",
+    controlspec.new(0, 1, 'lin', 0.05, 0.6, ""))
+  params:set_action("drum_hat_vol", function(v) drum_hat_vol = v end)
   params:add_control("drum_tone", "drum tone",
     controlspec.new(0, 1, 'lin', 0.05, 0.5, ""))
   params:set_action("drum_tone", function(v) drum_tone = v end)
@@ -948,9 +982,9 @@ function init()
       local h = pat.hat[drum_step] or 0
       local r = pat.rim[drum_step] or 0
 
-      if k > 0 then engine.drum_kick(drum_vol * k, drum_tone) end
-      if h > 0 then engine.drum_hat(drum_vol * 0.6 * h, drum_tone) end
-      if r > 0 then engine.drum_rim(drum_vol * 0.7 * r, drum_tone) end
+      if k > 0 then engine.drum_kick(drum_vol * drum_kick_vol * k, drum_tone) end
+      if h > 0 then engine.drum_hat(drum_vol * drum_hat_vol * h, drum_tone) end
+      if r > 0 then engine.drum_rim(drum_vol * drum_snare_vol * r, drum_tone) end
     end,
     division = 1/16,  -- 16th note grid
     enabled = true
