@@ -288,7 +288,6 @@ local SOULS = {
     chaos_freq = 0.20,
     chaos_magnitude = 0.7,
   },
-}
 
   -- FUNK: Clyde Stubblefield meets Zigaboo Modeliste meets Tony Allen.
   -- THE ONE is sacred. Everything syncopates around it.
