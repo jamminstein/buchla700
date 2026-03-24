@@ -109,6 +109,20 @@ local drum_tone = 0.5
 local drum_kick_vol = 1.0
 local drum_snare_vol = 1.0
 local drum_hat_vol = 0.6
+-- drum synthesis params
+local drum_kick_pitch = 1.0
+local drum_kick_decay = 0.3
+local drum_kick_drive = 0.5
+local drum_kick_click = 0.3
+local drum_hat_pitch = 1.0
+local drum_hat_decay = 0.08
+local drum_hat_drive = 0.0
+local drum_hat_ring = 0.0
+local drum_rim_pitch = 1.0
+local drum_rim_decay = 0.06
+local drum_rim_drive = 0.0
+local drum_rim_snappy = 0.5
+local drum_lpf = 12000
 local DRUM_PATTERNS = {
   -- name, kick[], hat[], rim[]  (1 = hit, 0 = rest, 0.5 = ghost)
   { name = "FOUR",       kick = {1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0},
@@ -757,7 +771,7 @@ function init()
   end)
 
   -- DRUMS (creative metronome)
-  params:add_group("DRUMS", 7)
+  params:add_group("DRUMS", 20)
   params:add_option("drum_active", "drums", {"off", "on"}, 1)
   params:set_action("drum_active", function(v)
     drum_active = (v == 2)
@@ -782,6 +796,51 @@ function init()
   params:add_control("drum_tone", "drum tone",
     controlspec.new(0, 1, 'lin', 0.05, 0.5, ""))
   params:set_action("drum_tone", function(v) drum_tone = v end)
+  params:add_control("drum_lpf", "drum filter",
+    controlspec.new(200, 16000, 'exp', 0, 12000, "hz"))
+  params:set_action("drum_lpf", function(v) drum_lpf = v end)
+  -- kick synth
+  params:add_separator("KICK")
+  params:add_control("kick_pitch", "kick pitch",
+    controlspec.new(0.3, 3.0, 'exp', 0.01, 1.0, "x"))
+  params:set_action("kick_pitch", function(v) drum_kick_pitch = v end)
+  params:add_control("kick_decay", "kick decay",
+    controlspec.new(0.05, 1.5, 'exp', 0.01, 0.3, "s"))
+  params:set_action("kick_decay", function(v) drum_kick_decay = v end)
+  params:add_control("kick_drive", "kick drive",
+    controlspec.new(0, 1, 'lin', 0.05, 0.5, ""))
+  params:set_action("kick_drive", function(v) drum_kick_drive = v end)
+  params:add_control("kick_click", "kick click",
+    controlspec.new(0, 1, 'lin', 0.05, 0.3, ""))
+  params:set_action("kick_click", function(v) drum_kick_click = v end)
+  -- hat synth
+  params:add_separator("HAT")
+  params:add_control("hat_pitch", "hat pitch",
+    controlspec.new(0.3, 3.0, 'exp', 0.01, 1.0, "x"))
+  params:set_action("hat_pitch", function(v) drum_hat_pitch = v end)
+  params:add_control("hat_decay", "hat decay",
+    controlspec.new(0.01, 0.8, 'exp', 0.01, 0.08, "s"))
+  params:set_action("hat_decay", function(v) drum_hat_decay = v end)
+  params:add_control("hat_drive", "hat drive",
+    controlspec.new(0, 1, 'lin', 0.05, 0.0, ""))
+  params:set_action("hat_drive", function(v) drum_hat_drive = v end)
+  params:add_control("hat_ring", "hat ring",
+    controlspec.new(0, 1, 'lin', 0.05, 0.0, ""))
+  params:set_action("hat_ring", function(v) drum_hat_ring = v end)
+  -- rim/snare synth
+  params:add_separator("RIM/SNARE")
+  params:add_control("rim_pitch", "rim pitch",
+    controlspec.new(0.3, 3.0, 'exp', 0.01, 1.0, "x"))
+  params:set_action("rim_pitch", function(v) drum_rim_pitch = v end)
+  params:add_control("rim_decay", "rim decay",
+    controlspec.new(0.01, 0.5, 'exp', 0.01, 0.06, "s"))
+  params:set_action("rim_decay", function(v) drum_rim_decay = v end)
+  params:add_control("rim_drive", "rim drive",
+    controlspec.new(0, 1, 'lin', 0.05, 0.0, ""))
+  params:set_action("rim_drive", function(v) drum_rim_drive = v end)
+  params:add_control("rim_snappy", "rim snappy",
+    controlspec.new(0, 1, 'lin', 0.05, 0.5, ""))
+  params:set_action("rim_snappy", function(v) drum_rim_snappy = v end)
 
   -- SCALE LOCK
   params:add_group("SCALE LOCK", 2)
@@ -982,9 +1041,18 @@ function init()
       local h = pat.hat[drum_step] or 0
       local r = pat.rim[drum_step] or 0
 
-      if k > 0 then engine.drum_kick(drum_vol * drum_kick_vol * k, drum_tone) end
-      if h > 0 then engine.drum_hat(drum_vol * drum_hat_vol * h, drum_tone) end
-      if r > 0 then engine.drum_rim(drum_vol * drum_snare_vol * r, drum_tone) end
+      if k > 0 then
+        engine.drum_kick(drum_vol * drum_kick_vol * k, drum_tone,
+          drum_kick_pitch, drum_kick_decay, drum_kick_drive, drum_lpf, drum_kick_click)
+      end
+      if h > 0 then
+        engine.drum_hat(drum_vol * drum_hat_vol * h, drum_tone,
+          drum_hat_pitch, drum_hat_decay, drum_hat_drive, drum_lpf, drum_hat_ring)
+      end
+      if r > 0 then
+        engine.drum_rim(drum_vol * drum_snare_vol * r, drum_tone,
+          drum_rim_pitch, drum_rim_decay, drum_rim_drive, drum_lpf, drum_rim_snappy)
+      end
     end,
     division = 1/16,  -- 16th note grid
     enabled = true

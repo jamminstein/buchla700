@@ -111,7 +111,7 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 8).clip(800, 16000));
+			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
@@ -158,7 +158,7 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 8).clip(800, 16000));
+			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
@@ -205,7 +205,7 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 8).clip(800, 16000));
+			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
@@ -252,7 +252,7 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 8).clip(800, 16000));
+			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
@@ -299,7 +299,7 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 8).clip(800, 16000));
+			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
@@ -346,7 +346,7 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 8).clip(800, 16000));
+			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
@@ -393,7 +393,7 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 8).clip(800, 16000));
+			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
@@ -440,7 +440,7 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 8).clip(800, 16000));
+			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
@@ -487,7 +487,7 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 8).clip(800, 16000));
+			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
@@ -534,7 +534,7 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 8).clip(800, 16000));
+			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
@@ -581,7 +581,7 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 8).clip(800, 16000));
+			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
@@ -628,7 +628,7 @@ Engine_Bucha : CroneEngine {
 			mixed = ((wsaOut + wsbOut) * 0.4 + subOsc + noiseSig);
 			// frequency-tracking LPF: tames metallic partials at the SOURCE
 			// higher notes get filtered more aggressively
-			mixed = LPF.ar(mixed, (freq * 8).clip(800, 16000));
+			mixed = LPF.ar(mixed, (freq * 14).clip(1200, 18000));
 			mixed = (mixed * (1 + (drive.lag(0.05) * 1.5))).softclip;
 			// filter (smoothed, conservative limits)
 			filterLfo = SinOsc.kr(lfo_filter_rate.lag(0.08)) * lfo_filter.lag(0.05) * cutoff.lag(0.05) * 0.4;
@@ -649,41 +649,74 @@ Engine_Bucha : CroneEngine {
 
 		// -- Drum SynthDefs (creative metronome) --
 		// Kick: sine body + pitch sweep + click transient
-		SynthDef(\b700_kick, { arg out, amp=0.5, tone=0.4, decay=0.3;
-			var body, click, env, sig;
+		// Kick: sine body + pitch env + click + drive + filter
+		SynthDef(\b700_kick, { arg out, amp=0.5, tone=0.4, decay=0.3,
+			pitch=1.0, click=0.3, drive=0.5, lpf=8000;
+			var body, clk, env, sig, pitchHz;
+			pitchHz = 55 * pitch;
 			env = EnvGen.kr(Env.perc(0.001, decay, 1, -8), doneAction: Done.freeSelf);
 			body = SinOsc.ar(
-				EnvGen.kr(Env([120, 55, 40], [0.01, decay], [-8, -4])),
+				EnvGen.kr(Env([pitchHz * 2.2, pitchHz, pitchHz * 0.72],
+					[0.01, decay], [-8, -4])),
 				0, env
 			);
-			click = LPF.ar(WhiteNoise.ar(1), 1500) *
-				EnvGen.kr(Env.perc(0.001, 0.01));
-			sig = (body + (click * 0.3)) * amp;
-			sig = (sig * (1 + (tone * 2))).tanh * 0.7;
+			// sub harmonic for weight
+			body = body + (SinOsc.ar(pitchHz * 0.5) * env * 0.3);
+			clk = LPF.ar(WhiteNoise.ar(1), 1500 + (tone * 3000)) *
+				EnvGen.kr(Env.perc(0.001, 0.008 + (tone * 0.01)));
+			sig = body + (clk * click);
+			// drive: from clean to crunchy
+			sig = (sig * (1 + (drive * 4))).tanh * (1 / (1 + (drive * 1.5)));
+			sig = LPF.ar(sig, lpf);
+			sig = sig * amp * 0.8;
 			Out.ar(out, sig ! 2);
 		}).add;
 
-		// Hat: filtered noise burst
-		SynthDef(\b700_hat, { arg out, amp=0.3, tone=0.5, decay=0.08;
-			var sig, env;
+		// Hat: noise source + filter + character
+		SynthDef(\b700_hat, { arg out, amp=0.3, tone=0.5, decay=0.08,
+			pitch=1.0, drive=0.0, lpf=16000, ring=0.0;
+			var sig, env, metallic;
 			env = EnvGen.kr(Env.perc(0.001, decay, 1, -12), doneAction: Done.freeSelf);
-			sig = HPF.ar(WhiteNoise.ar(1), 4000 + (tone * 6000));
-			sig = BPF.ar(sig, 8000 + (tone * 4000), 0.6);
-			sig = sig * env * amp;
+			// noise body
+			sig = HPF.ar(WhiteNoise.ar(1), 3000 + (tone * 7000));
+			sig = BPF.ar(sig, (6000 + (tone * 5000)) * pitch, 0.5);
+			// metallic ring: pair of detuned square waves for shimmer
+			metallic = Pulse.ar(6430 * pitch, 0.5, 0.2) +
+				Pulse.ar(7210 * pitch, 0.5, 0.15) +
+				Pulse.ar(8530 * pitch, 0.3, 0.12);
+			metallic = HPF.ar(metallic, 4000);
+			sig = sig + (metallic * ring);
+			sig = sig * env;
+			// drive
+			sig = Select.ar((drive > 0.01).asInteger, [sig, (sig * (1 + (drive * 6))).tanh * 0.7]);
+			sig = LPF.ar(sig, lpf);
+			sig = sig * amp;
 			Out.ar(out, sig ! 2);
 		}).add;
 
-		// Rim: bandpassed click + body
-		SynthDef(\b700_rim, { arg out, amp=0.4, tone=0.5, decay=0.06;
-			var sig, env, body;
+		// Rim/Snare: body + noise + ring + filter
+		SynthDef(\b700_rim, { arg out, amp=0.4, tone=0.5, decay=0.06,
+			pitch=1.0, drive=0.0, lpf=12000, snappy=0.5;
+			var sig, env, body, noise;
 			env = EnvGen.kr(Env.perc(0.0005, decay, 1, -10), doneAction: Done.freeSelf);
+			// tuned body
 			body = SinOsc.ar(
-				EnvGen.kr(Env([800, 400], [0.005], [-6])),
+				EnvGen.kr(Env([(800 * pitch), (400 * pitch)], [0.005], [-6])),
 				0, env * 0.5
 			);
-			sig = BPF.ar(WhiteNoise.ar(1), 1800 + (tone * 2000), 0.15) *
-				EnvGen.kr(Env.perc(0.0005, 0.015));
-			sig = (body + sig) * amp;
+			// additional ring partial
+			body = body + (SinOsc.ar(580 * pitch) * env * 0.2);
+			// noise burst (snare wires)
+			noise = BPF.ar(WhiteNoise.ar(1), (1800 + (tone * 2000)) * pitch, 0.15) *
+				EnvGen.kr(Env.perc(0.0005, 0.01 + (snappy * 0.04)));
+			// noise tail (longer = more snare, shorter = more rim)
+			noise = noise + (HPF.ar(WhiteNoise.ar(1), 2000) *
+				EnvGen.kr(Env.perc(0.001, decay * snappy * 0.8)) * snappy * 0.3);
+			sig = body + noise;
+			// drive
+			sig = Select.ar((drive > 0.01).asInteger, [sig, (sig * (1 + (drive * 5))).tanh * 0.7]);
+			sig = LPF.ar(sig, lpf);
+			sig = sig * amp;
 			Out.ar(out, sig ! 2);
 		}).add;
 
@@ -1097,20 +1130,42 @@ Engine_Bucha : CroneEngine {
 		});
 
 		// ---- drum commands (creative metronome) ----
-		this.addCommand("drum_kick", "ff", { arg msg;
-			var amp = msg[1].asFloat;
-			var tone = msg[2].asFloat;
-			Synth(\b700_kick, [\out, context.out_b, \amp, amp, \tone, tone], voiceGroup);
+		// each takes: amp, tone, pitch, decay, drive, lpf, extra
+		this.addCommand("drum_kick", "fffffff", { arg msg;
+			Synth(\b700_kick, [
+				\out, context.out_b,
+				\amp, msg[1].asFloat,
+				\tone, msg[2].asFloat,
+				\pitch, msg[3].asFloat,
+				\decay, msg[4].asFloat,
+				\drive, msg[5].asFloat,
+				\lpf, msg[6].asFloat,
+				\click, msg[7].asFloat
+			], voiceGroup);
 		});
-		this.addCommand("drum_hat", "ff", { arg msg;
-			var amp = msg[1].asFloat;
-			var tone = msg[2].asFloat;
-			Synth(\b700_hat, [\out, context.out_b, \amp, amp, \tone, tone], voiceGroup);
+		this.addCommand("drum_hat", "fffffff", { arg msg;
+			Synth(\b700_hat, [
+				\out, context.out_b,
+				\amp, msg[1].asFloat,
+				\tone, msg[2].asFloat,
+				\pitch, msg[3].asFloat,
+				\decay, msg[4].asFloat,
+				\drive, msg[5].asFloat,
+				\lpf, msg[6].asFloat,
+				\ring, msg[7].asFloat
+			], voiceGroup);
 		});
-		this.addCommand("drum_rim", "ff", { arg msg;
-			var amp = msg[1].asFloat;
-			var tone = msg[2].asFloat;
-			Synth(\b700_rim, [\out, context.out_b, \amp, amp, \tone, tone], voiceGroup);
+		this.addCommand("drum_rim", "fffffff", { arg msg;
+			Synth(\b700_rim, [
+				\out, context.out_b,
+				\amp, msg[1].asFloat,
+				\tone, msg[2].asFloat,
+				\pitch, msg[3].asFloat,
+				\decay, msg[4].asFloat,
+				\drive, msg[5].asFloat,
+				\lpf, msg[6].asFloat,
+				\snappy, msg[7].asFloat
+			], voiceGroup);
 		});
 	}
 
